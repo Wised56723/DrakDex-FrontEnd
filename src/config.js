@@ -1,0 +1,1 @@
+export const API_URL = "https://drakdex-api.onrender.com/api/criaturas";

@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Vamos definir um fundo escuro padrão para toda a app aqui */
+body {
+  @apply bg-slate-950 text-slate-200;
+}
