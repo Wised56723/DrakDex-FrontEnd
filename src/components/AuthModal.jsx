@@ -1,10 +1,10 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-// 👇 ALTERAÇÃO 1: Importamos como 'LockIcon' para não confundir com o navegador
 import { Shield, User, Mail, Lock as LockIcon, Ghost, Loader2, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AuthModal({ aoFechar }) {
-  // ... (o resto do código do state e handleSubmit continua igual) ...
+
   const { login, register } = useContext(AuthContext);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -21,18 +21,19 @@ export default function AuthModal({ aoFechar }) {
     try {
       if (isLogin) {
         await login(formData.email, formData.senha);
+        toast.success(`Bem-vindo de volta, caçador!`);
       } else {
         if (formData.senha.length < 8) {
-          alert("A senha precisa de pelo menos 8 caracteres!");
+          toast.warning("A senha precisa de pelo menos 8 caracteres!");
           setLoading(false);
           return;
         }
         await register(formData);
-        alert("Conta criada! Faça login agora.");
+        toast.success("Conta criada! Faça login agora.");
         setIsLogin(true);
       }
     } catch (error) {
-      alert("Erro: " + (error.response?.data || error.message));
+      toast.error("Erro: " + (error.response?.data || error.message));
     } finally {
       setLoading(false);
     }

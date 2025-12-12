@@ -4,6 +4,7 @@ import { api } from './services/api';
 import { Shield, PlusCircle, List, LayoutDashboard, Scroll, LogOut, User, LogIn, Lock as LockIcon } from 'lucide-react';
 import CriaturaForm from './CriaturaForm';
 import AuthModal from './components/AuthModal';
+import { Toaster } from 'sonner';
 
 function Dashboard() {
   const { user, logout, authenticated } = useContext(AuthContext);
@@ -52,7 +53,10 @@ function Dashboard() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 font-sans">
-      
+
+      {/* Toaster para notificações */}
+      <Toaster richColors theme="dark" position="top-right" />
+
       {/* Modal só aparece se o estado for true */}
       {showLoginModal && <AuthModal aoFechar={() => setShowLoginModal(false)} />}
 
@@ -125,6 +129,10 @@ function Dashboard() {
                   </div>
                   <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">
                     <p className="text-slate-400 italic text-sm flex gap-2"><Scroll size={16} className="shrink-0 mt-1 text-slate-600"/>{criatura.descricao}</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800 text-xs text-slate-500">
+                    <User size={14} />
+                    <span>Invocado por: <strong className="text-slate-400">{criatura.criadorVulgo || "Desconhecido"}</strong></span>
                   </div>
                 </div>
               ))}

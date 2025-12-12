@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { API_URL } from './config';
 import { PlusCircle, Save, Loader2 } from 'lucide-react';
 import { api } from './services/api'; // <--- Importa o Axios configurado
+import { toast } from 'sonner';
 
 function CriaturaForm({ aoCriar }) {
   const [dados, setDados] = useState({ nome: '', tipo: '', nivel: 1, descricao: '' });
@@ -22,10 +23,10 @@ function CriaturaForm({ aoCriar }) {
           const nova = response.data; // Axios devolve os dados em .data
           
           setDados({ nome: '', tipo: '', nivel: 1, descricao: '' });
-          alert('Criatura invocada!');
+          toast.success('Criatura invocada com sucesso! 🐉');
           if (aoCriar) aoCriar(nova);
         } catch (error) {
-          alert('Erro: ' + error.message);
+          toast.error('Falha na invocação: ' + error.message);
         } finally {
           setEnviando(false);
         }
