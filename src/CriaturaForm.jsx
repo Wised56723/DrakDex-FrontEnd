@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { API_URL } from './config';
 import { PlusCircle, Save, Loader2 } from 'lucide-react';
+import { api } from './services/api'; // <--- Importa o Axios configurado
 
 function CriaturaForm({ aoCriar }) {
   const [dados, setDados] = useState({ nome: '', tipo: '', nivel: 1, descricao: '' });
@@ -11,25 +12,24 @@ function CriaturaForm({ aoCriar }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setEnviando(true);
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados),
-      });
-      if (!response.ok) throw new Error('Erro ao criar');
-      const nova = await response.json();
-      setDados({ nome: '', tipo: '', nivel: 1, descricao: '' });
-      alert('Criatura invocada!');
-      if (aoCriar) aoCriar(nova);
-    } catch (error) {
-      alert('Erro: ' + error.message);
-    } finally {
-      setEnviando(false);
-    }
-  };
+        e.preventDefault();
+        setEnviando(true);
+        try {
+          // Usamos api.post em vez de fetch
+          // Não precisamos passar headers, o api.js já coloca o Token!
+          const response = await api.post('/api/criaturas', dados);
+          
+          const nova = response.data; // Axios devolve os dados em .data
+          
+          setDados({ nome: '', tipo: '', nivel: 1, descricao: '' });
+          alert('Criatura invocada!');
+          if (aoCriar) aoCriar(nova);
+        } catch (error) {
+          alert('Erro: ' + error.message);
+        } finally {
+          setEnviando(false);
+        }
+    };
 
   // Classes comuns para inputs (para não repetir código)
   const inputClass = "w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all";
