@@ -1,7 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext, AuthProvider } from './contexts/AuthContext';
 import { api } from './services/api';
-import { Shield, PlusCircle, LayoutDashboard, Scroll, LogOut, User, LogIn, Lock as LockIcon, Folder, FolderOpen, Globe, ChevronRight, Home, ArrowLeft } from 'lucide-react';
+// Importamos Lock como LockIcon para evitar conflitos com o navegador
+import { Shield, PlusCircle, LayoutDashboard, Scroll, LogOut, User, LogIn, Lock as LockIcon, Folder, FolderOpen, Globe, ChevronRight } from 'lucide-react';
 import CriaturaForm from './CriaturaForm';
 import AuthModal from './components/AuthModal';
 import { toast, Toaster } from 'sonner';
@@ -9,7 +10,7 @@ import { toast, Toaster } from 'sonner';
 function Dashboard() {
   const { user, logout, authenticated } = useContext(AuthContext);
   
-  // Abas: 'publico' | 'meu_bestiario'
+  // Abas: 'publico' | 'meu_bestiario' | 'criar'
   const [abaAtiva, setAbaAtiva] = useState('meu_bestiario');
   
   // Navegação: null = Raiz, ID = Dentro de uma pasta
@@ -19,7 +20,7 @@ function Dashboard() {
   const [conteudo, setConteudo] = useState({ pastas: [], criaturas: [] });
   const [loading, setLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showCriarPasta, setShowCriarPasta] = useState(false); // Simples modal in-line para pasta
+  const [showCriarPasta, setShowCriarPasta] = useState(false); 
 
   // ESTADO DO FORMULÁRIO DE PASTA
   const [novaPastaNome, setNovaPastaNome] = useState('');
@@ -27,6 +28,9 @@ function Dashboard() {
 
   // --- CARREGAMENTO DE DADOS ---
   const carregarDados = () => {
+    // Se estivermos na aba de criar, não precisamos carregar dados
+    if (abaAtiva === 'criar') return;
+
     setLoading(true);
 
     if (abaAtiva === 'publico') {
@@ -44,7 +48,7 @@ function Dashboard() {
       if (pastaAtualId === null) {
         // Raiz do Meu Bestiário
         api.get('/api/pastas/meus-bestiarios')
-          .then(res => setConteudo({ pastas: res.data, criaturas: [] })) // Na raiz não mostramos criaturas soltas por enquanto
+          .then(res => setConteudo({ pastas: res.data, criaturas: [] })) 
           .catch(err => console.error(err))
           .finally(() => setLoading(false));
       } else {
@@ -71,6 +75,7 @@ function Dashboard() {
   const entrarNaPasta = (pasta) => {
     setPastaAtualId(pasta.id);
     setCaminhoPao([...caminhoPao, { id: pasta.id, nome: pasta.nome }]);
+    setAbaAtiva('meu_bestiario'); // Garante que volta para a lista se estiver em outro lugar
   };
 
   const voltarPasta = (indice) => {
@@ -78,6 +83,7 @@ function Dashboard() {
     const novoCaminho = caminhoPao.slice(0, indice + 1);
     setCaminhoPao(novoCaminho);
     setPastaAtualId(novoCaminho[novoCaminho.length - 1].id);
+    setAbaAtiva('meu_bestiario');
   };
 
   const criarPasta = async (e) => {
@@ -126,6 +132,15 @@ function Dashboard() {
           >
             <Globe size={20} /> Bestiário Público
           </button>
+
+           {/* BOTÃO ATALHO CRIAR (SIDEBAR) */}
+           <button 
+            onClick={() => authenticated ? setAbaAtiva('criar') : setShowLoginModal(true)} 
+            className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'criar' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            {authenticated ? <PlusCircle size={20} /> : <LockIcon size={16} className="text-slate-500"/>} 
+            Nova Criatura
+          </button>
         </nav>
       </aside>
 
@@ -136,7 +151,7 @@ function Dashboard() {
         <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 backdrop-blur">
           {/* BREADCRUMBS (Navegação) */}
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            {abaAtiva === 'meu_bestiario' && caminhoPao.map((passo, index) => (
+            {abaAtiva !== 'publico' && caminhoPao.map((passo, index) => (
               <div key={passo.id || 'root'} className="flex items-center gap-2">
                 {index > 0 && <ChevronRight size={14} />}
                 <button 
@@ -177,8 +192,11 @@ function Dashboard() {
               >
                 <Folder size={18} className="text-yellow-500"/> Nova Pasta
               </button>
-              {/* TODO: Implementar lógica de abrir modal de criatura aqui */}
-              <button className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg transition-all">
+              
+              <button 
+                onClick={() => setAbaAtiva('criar')} 
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg transition-all"
+              >
                 <PlusCircle size={18}/> Nova Criatura Aqui
               </button>
             </div>
@@ -213,61 +231,88 @@ function Dashboard() {
 
           {loading && <p className="text-slate-500">Carregando grimórios...</p>}
 
-          {/* GRID DE PASTAS */}
-          {conteudo.pastas.length > 0 && (
+          {/* VISUALIZAÇÃO DE LISTA (Pastas e Criaturas) */}
+          {abaAtiva !== 'criar' && (
             <>
-              <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Pastas / Tomos</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
-                {conteudo.pastas.map(pasta => (
-                  <div 
-                    key={pasta.id} 
-                    onClick={() => entrarNaPasta(pasta)}
-                    className="bg-slate-900 border border-slate-800 hover:border-yellow-500/50 p-4 rounded-xl cursor-pointer transition-all hover:bg-slate-800 group"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <Folder className="text-yellow-600 group-hover:text-yellow-400 transition-colors" size={32} />
-                      {pasta.publica && <Globe size={14} className="text-blue-400" title="Pública"/>}
-                    </div>
-                    <p className="font-bold text-slate-200 truncate">{pasta.nome}</p>
-                    <p className="text-xs text-slate-500">{pasta.quantidadeCriaturas} criaturas</p>
-                    {pasta.donoVulgo && <p className="text-xs text-rose-500 mt-1">por {pasta.donoVulgo}</p>}
+              {/* GRID DE PASTAS */}
+              {conteudo.pastas.length > 0 && (
+                <>
+                  <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Pastas / Tomos</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
+                    {conteudo.pastas.map(pasta => (
+                      <div 
+                        key={pasta.id} 
+                        onClick={() => entrarNaPasta(pasta)}
+                        className="bg-slate-900 border border-slate-800 hover:border-yellow-500/50 p-4 rounded-xl cursor-pointer transition-all hover:bg-slate-800 group"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <Folder className="text-yellow-600 group-hover:text-yellow-400 transition-colors" size={32} />
+                          {pasta.publica && <Globe size={14} className="text-blue-400" title="Pública"/>}
+                        </div>
+                        <p className="font-bold text-slate-200 truncate">{pasta.nome}</p>
+                        <p className="text-xs text-slate-500">{pasta.quantidadeCriaturas} criaturas</p>
+                        {pasta.donoVulgo && <p className="text-xs text-rose-500 mt-1">por {pasta.donoVulgo}</p>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
+
+              {/* GRID DE CRIATURAS (Conteúdo da Pasta) */}
+              {conteudo.criaturas.length > 0 && (
+                <>
+                  <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4 border-t border-slate-800 pt-4">Criaturas</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {conteudo.criaturas.map((criatura) => (
+                      <div key={criatura.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-rose-600/50 transition-colors shadow-lg">
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className="text-xl font-bold text-rose-500">{criatura.nome}</h3>
+                          <span className="bg-slate-800 text-xs font-bold px-3 py-1 rounded-full text-slate-300">Lvl {criatura.nivel}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
+                          <Shield size={16} className="text-blue-400"/> {criatura.tipo}
+                        </div>
+                        <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/50 mb-3">
+                          <p className="text-slate-400 italic text-sm flex gap-2"><Scroll size={16} className="shrink-0 mt-1 text-slate-600"/>{criatura.descricao}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800 text-xs text-slate-500">
+                            <User size={14} />
+                            <span>Invocado por: <strong className="text-slate-400">{criatura.criadorVulgo || "Desconhecido"}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* EMPTY STATE */}
+              {!loading && conteudo.pastas.length === 0 && conteudo.criaturas.length === 0 && (
+                <div className="text-center text-slate-600 mt-10">
+                  <FolderOpen size={48} className="mx-auto mb-4 opacity-50"/>
+                  <p>Este bestiário está vazio.</p>
+                </div>
+              )}
             </>
           )}
 
-          {/* GRID DE CRIATURAS (Conteúdo da Pasta) */}
-          {conteudo.criaturas.length > 0 && (
-            <>
-              <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4 border-t border-slate-800 pt-4">Criaturas</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {conteudo.criaturas.map((criatura) => (
-                  <div key={criatura.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-rose-600/50 transition-colors shadow-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="text-xl font-bold text-rose-500">{criatura.nome}</h3>
-                      <span className="bg-slate-800 text-xs font-bold px-3 py-1 rounded-full text-slate-300">Lvl {criatura.nivel}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
-                      <Shield size={16} className="text-blue-400"/> {criatura.tipo}
-                    </div>
-                    <p className="text-slate-400 italic text-sm mb-3 bg-slate-950/50 p-2 rounded">{criatura.descricao}</p>
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-xs text-slate-500">
-                      <User size={14} /> <span>{criatura.criadorVulgo}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* EMPTY STATE */}
-          {!loading && conteudo.pastas.length === 0 && conteudo.criaturas.length === 0 && (
-            <div className="text-center text-slate-600 mt-10">
-              <FolderOpen size={48} className="mx-auto mb-4 opacity-50"/>
-              <p>Este bestiário está vazio.</p>
+          {/* FORMULÁRIO DE CRIAÇÃO (COM O ID DA PASTA PASSADO POR PROP) */}
+          {abaAtiva === 'criar' && authenticated && (
+            <div className="max-w-2xl mx-auto">
+              <CriaturaForm 
+                pastaId={pastaAtualId} 
+                aoCriar={(nova) => { 
+                  // Adiciona à lista local imediatamente
+                  setConteudo(prev => ({
+                    ...prev,
+                    criaturas: [nova, ...prev.criaturas]
+                  }));
+                  // Volta para a visualização da pasta
+                  setAbaAtiva('meu_bestiario'); 
+                }} 
+              />
             </div>
           )}
+
         </div>
       </main>
     </div>

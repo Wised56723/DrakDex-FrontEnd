@@ -1,108 +1,115 @@
 import { useState } from 'react';
-import { API_URL } from './config';
-import { PlusCircle, Save, Loader2 } from 'lucide-react';
-import { api } from './services/api'; // <--- Importa o Axios configurado
+import { api } from './services/api';
 import { toast } from 'sonner';
+import { Scroll, Shield, Zap, Loader2 } from 'lucide-react';
 
-function CriaturaForm({ aoCriar }) {
-  const [dados, setDados] = useState({ nome: '', tipo: '', nivel: 1, descricao: '' });
+export default function CriaturaForm({ aoCriar, pastaId }) {
+  const [dados, setDados] = useState({
+    nome: '',
+    tipo: '',
+    nivel: 1,
+    descricao: ''
+  });
   const [enviando, setEnviando] = useState(false);
 
   const handleChange = (e) => {
-    setDados({ ...dados, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setDados(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
-        e.preventDefault();
-        setEnviando(true);
-        try {
-          // Usamos api.post em vez de fetch
-          // Não precisamos passar headers, o api.js já coloca o Token!
-          const response = await api.post('/api/criaturas', dados);
-          
-          const nova = response.data; // Axios devolve os dados em .data
-          
-          setDados({ nome: '', tipo: '', nivel: 1, descricao: '' });
-          toast.success('Criatura invocada com sucesso! 🐉');
-          if (aoCriar) aoCriar(nova);
-        } catch (error) {
-          toast.error('Falha na invocação: ' + error.message);
-        } finally {
-          setEnviando(false);
-        }
-    };
+    e.preventDefault();
+    setEnviando(true);
+    try {
+      // Adicionamos o pastaId ao objeto que vai para o backend
+      const payload = { ...dados, pastaId: pastaId };
+      
+      const response = await api.post('/api/criaturas', payload);
+      
+      toast.success('Criatura invocada com sucesso! 🐉');
+      
+      setDados({ nome: '', tipo: '', nivel: 1, descricao: '' });
+      if (aoCriar) aoCriar(response.data);
+    } catch (error) {
+      toast.error('Falha na invocação: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setEnviando(false);
+    }
+  };
 
-  // Classes comuns para inputs (para não repetir código)
-  const inputClass = "w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all";
+  const inputClass = "w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-rose-600 focus:outline-none transition-colors";
+  const labelClass = "block text-sm font-bold text-slate-400 mb-1 flex items-center gap-2";
 
   return (
-    <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+    <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm shadow-xl">
       <div className="flex items-center gap-3 mb-6 text-rose-500">
-        <PlusCircle size={24} />
-        <h3 className="text-xl font-bold">Detalhes da Invocação</h3>
+        <Zap size={24} />
+        <h2 className="text-xl font-bold text-white">Detalhes da Invocação</h2>
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-5">
+
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-400 mb-1">Nome da Criatura</label>
+          <label className={labelClass}>Nome da Criatura</label>
           <input
             name="nome"
             value={dados.nome}
             onChange={handleChange}
-            required
+            placeholder="Ex: Lobo Cinzento"
             className={inputClass}
-            placeholder="Ex: Dragão do Caos"
+            required
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Tipo</label>
+            <label className={labelClass}><Shield size={14}/> Tipo</label>
             <input
               name="tipo"
               value={dados.tipo}
               onChange={handleChange}
-              required
+              placeholder="Ex: Animal"
               className={inputClass}
-              placeholder="Ex: Fogo"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Nível</label>
+            <label className={labelClass}>Nível</label>
             <input
-              name="nivel"
               type="number"
-              min="1"
+              name="nivel"
               value={dados.nivel}
               onChange={handleChange}
-              required
+              min="1"
               className={inputClass}
+              required
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-400 mb-1">Descrição / Lore</label>
+          <label className={labelClass}><Scroll size={14}/> Descrição / Lore</label>
           <textarea
             name="descricao"
             value={dados.descricao}
             onChange={handleChange}
-            rows="4"
-            className={inputClass}
-            placeholder="Descreva os perigos desta criatura..."
+            placeholder="Pelagem grossa, dentes afiados..."
+            className={`${inputClass} h-32 resize-none`}
           />
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={enviando}
-          className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-rose-900/20 flex justify-center items-center gap-2 mt-2"
         >
-          {enviando ? <><Loader2 className="animate-spin"/> Invocando...</> : <><Save size={20}/> Salvar no Bestiário</>}
+          {enviando ? <Loader2 className="animate-spin" /> : (
+            <>
+              <Scroll size={20} />
+              {pastaId ? "Salvar nesta Pasta" : "Salvar no Bestiário"}
+            </>
+          )}
         </button>
       </form>
     </div>
   );
 }
-
-export default CriaturaForm;
