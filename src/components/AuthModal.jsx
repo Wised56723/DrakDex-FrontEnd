@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-// IMPORTANTE: Lock as LockIcon previne o erro de tela azul
-import { Shield, User, Mail, Lock as LockIcon, Ghost, Loader2, X } from 'lucide-react';
+// 👇 IMPORTANTE: Usamos 'Key' e removemos totalmente o 'Lock' para evitar o erro
+import { Shield, User, Mail, Key, Ghost, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AuthModal({ aoFechar }) {
@@ -43,16 +43,23 @@ export default function AuthModal({ aoFechar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl relative">
-        <button onClick={aoFechar} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+        
+        <button onClick={aoFechar} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
+          <X size={24} />
+        </button>
 
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4 text-rose-600"><Shield size={48} /></div>
+          <div className="flex justify-center mb-4 text-rose-600">
+            <Shield size={48} />
+          </div>
           <h1 className="text-3xl font-bold text-white mb-2">DrakDex</h1>
           <p className="text-slate-400">{isLogin ? "Acesse para criar criaturas" : "Junte-se à ordem"}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          
           {!isLogin && (
             <>
               <div className="relative">
@@ -72,8 +79,8 @@ export default function AuthModal({ aoFechar }) {
           </div>
 
           <div className="relative">
-            {/* O USO CORRETO DO ÍCONE: */}
-            <LockIcon className="absolute left-3 top-3.5 text-slate-500" size={18} />
+            {/* 👇 USAMOS A CHAVE AQUI AGORA */}
+            <Key className="absolute left-3 top-3.5 text-slate-500" size={18} />
             <input type="password" name="senha" placeholder="Senha" className={inputClass} onChange={handleChange} required />
           </div>
 
