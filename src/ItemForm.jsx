@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { api } from './services/api';
 import { toast } from 'sonner';
-import { Sword, Shield, Gem, Loader2, Save } from 'lucide-react';
+import { Sword, Loader2, Save } from 'lucide-react';
 
+// 👇 1. AQUI: Adicionamos 'pastaId' nas propriedades que o componente recebe
 export default function ItemForm({ aoCriar, pastaId }) {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
     nome: '',
     descricao: '',
-    tipo: 'ARMA',      // Valor padrão do Enum
-    raridade: 'COMUM', // Valor padrão do Enum
+    tipo: 'ARMA',
+    raridade: 'COMUM',
     peso: '',
     preco: '',
     dano: '',
@@ -25,21 +26,21 @@ export default function ItemForm({ aoCriar, pastaId }) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Pequeno ajuste: converter peso para número se não estiver vazio
+      // 👇 2. AQUI: Incluímos o pastaId no objeto que vai para o Backend
       const payload = { 
         ...dados, 
-        peso: dados.peso ? parseFloat(dados.peso) : null 
+        peso: dados.peso ? parseFloat(dados.peso) : null,
+        pastaId: pastaId // <--- Essencial para vincular à pasta!
       };
 
       const response = await api.post('/api/itens', payload);
       toast.success("Item forjado com sucesso! ⚔️");
       
-      // Limpar form
       setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '' });
       
       if (aoCriar) aoCriar(response.data);
     } catch (error) {
-      toast.error("Erro ao criar item: " + error.message);
+      toast.error("Erro ao criar item: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,6 @@ export default function ItemForm({ aoCriar, pastaId }) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         
-        {/* Linha 1: Nome e Preço */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className={labelClass}>Nome do Item</label>
@@ -68,7 +68,6 @@ export default function ItemForm({ aoCriar, pastaId }) {
           </div>
         </div>
 
-        {/* Linha 2: Tipo, Raridade e Peso */}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className={labelClass}>Tipo</label>
@@ -99,7 +98,6 @@ export default function ItemForm({ aoCriar, pastaId }) {
           </div>
         </div>
 
-        {/* Linha 3: Combate (Condicional visualmente, mas deixamos aberto por enquanto) */}
         <div className="grid grid-cols-2 gap-4 bg-slate-900/50 p-3 rounded border border-slate-800">
           <div>
             <label className={labelClass}>Dano (Se Arma)</label>
@@ -117,7 +115,7 @@ export default function ItemForm({ aoCriar, pastaId }) {
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2">
-          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> Salvar no Arsenal</>}
+          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> {pastaId ? "Salvar nesta Pasta" : "Salvar no Arsenal"}</>}
         </button>
 
       </form>
