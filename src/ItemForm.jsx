@@ -3,7 +3,7 @@ import { api } from './services/api';
 import { toast } from 'sonner';
 import { Sword, Shield, Gem, Loader2, Save } from 'lucide-react';
 
-export default function ItemForm({ aoCriar }) {
+export default function ItemForm({ aoCriar, pastaId }) {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
     nome: '',
