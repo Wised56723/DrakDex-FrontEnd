@@ -1,97 +1,56 @@
-import { useState, useContext } from 'react';
-import { AuthContext } from '../contexts/AuthContext';
-import { Shield, User, Mail, Key, Ghost, Loader2, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { createContext, useState, useEffect } from "react";
+import { api } from "../services/api";
 
-export default function AuthModal({ aoFechar }) {
-  const { login, register } = useContext(AuthContext);
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    email: '', senha: '', nomeCompleto: '', vulgo: ''
-  });
+export const AuthContext = createContext();
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (token && storedUser) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  const login = async (email, senha) => {
     try {
-      if (isLogin) {
-        await login(formData.email, formData.senha);
-        toast.success(`Bem-vindo de volta!`);
-        
-        // 👇 AQUI: Fechamos o modal automaticamente após o sucesso
-        aoFechar(); 
+      const response = await api.post("/auth/login", { email, senha });
+      const { token, nome, vulgo } = response.data;
 
-      } else {
-        if (formData.senha.length < 8) {
-          toast.warning("A senha precisa de pelo menos 8 caracteres!");
-          setLoading(false);
-          return;
-        }
-        await register(formData);
-        toast.success("Conta criada! Faça login agora.");
-        // No registro não fechamos, apenas mudamos para a tela de login para o usuário entrar
-        setIsLogin(true);
-      }
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify({ nome, vulgo }));
+      
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setUser({ nome, vulgo });
     } catch (error) {
-      toast.error("Erro: " + (error.response?.data || error.message));
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  const inputClass = "w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:border-rose-600 focus:outline-none transition-colors";
+  const register = async (dados) => {
+    try {
+      await api.post("/auth/register", dados);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    api.defaults.headers.common["Authorization"] = null;
+    setUser(null);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl relative">
-        <button onClick={aoFechar} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
-
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4 text-rose-600"><Shield size={48} /></div>
-          <h1 className="text-3xl font-bold text-white mb-2">DrakDex</h1>
-          <p className="text-slate-400">{isLogin ? "Acesse para criar criaturas" : "Junte-se à ordem"}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <>
-              <div className="relative">
-                <User className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                <input name="nomeCompleto" placeholder="Nome Completo" className={inputClass} onChange={handleChange} required />
-              </div>
-              <div className="relative">
-                <Ghost className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                <input name="vulgo" placeholder="Seu Vulgo" className={inputClass} onChange={handleChange} required />
-              </div>
-            </>
-          )}
-
-          <div className="relative">
-            <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
-            <input type="email" name="email" placeholder="Email" className={inputClass} onChange={handleChange} required />
-          </div>
-
-          <div className="relative">
-            <Key className="absolute left-3 top-3.5 text-slate-500" size={18} />
-            <input type="password" name="senha" placeholder="Senha" className={inputClass} onChange={handleChange} required />
-          </div>
-
-          <button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : (isLogin ? "Entrar" : "Cadastrar")}
-          </button>
-        </form>
-
-        <p className="text-center mt-6 text-slate-400 text-sm">
-          {isLogin ? "Ainda não tem conta?" : "Já é um caçador?"}{" "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-rose-500 font-bold hover:underline">
-            {isLogin ? "Crie uma agora" : "Fazer Login"}
-          </button>
-        </p>
-      </div>
-    </div>
+    <AuthContext.Provider value={{ authenticated: !!user, user, login, register, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
   );
 }

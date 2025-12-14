@@ -4,7 +4,7 @@ import { api } from './services/api';
 import { 
   Shield, PlusCircle, LayoutDashboard, Scroll, LogOut, User, LogIn, 
   Folder, FolderOpen, Globe, ChevronRight, Backpack, Sword, Hammer, 
-  Gem, FlaskConical, Feather, Lock 
+  Gem, FlaskConical, Feather, Menu, X 
 } from 'lucide-react';
 import CriaturaForm from './CriaturaForm';
 import ItemForm from './ItemForm'; 
@@ -34,50 +34,34 @@ const ICONES_TIPO = {
 function Dashboard() {
   const { user, logout, authenticated } = useContext(AuthContext);
   
-  // Abas possíveis: 
-  // 'meu_bestiario', 'publico_bestiario', 'criar_criatura'
-  // 'meu_arsenal',   'publico_arsenal',   'criar_item'
   const [abaAtiva, setAbaAtiva] = useState('meu_bestiario');
-  
-  // Estado de Navegação
   const [pastaAtualId, setPastaAtualId] = useState(null);
   const [caminhoPao, setCaminhoPao] = useState([{ id: null, nome: 'Raiz' }]);
-  
-  // Conteúdo (Pastas mistas, Criaturas ou Itens)
   const [conteudo, setConteudo] = useState({ pastas: [], criaturas: [], itens: [] });
-  
   const [loading, setLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  
-  // Estado para Criar Pasta
   const [showCriarPasta, setShowCriarPasta] = useState(false); 
   const [novaPastaNome, setNovaPastaNome] = useState('');
   const [novaPastaPublica, setNovaPastaPublica] = useState(false);
 
-  // --- LÓGICA DE CATEGORIA ---
-  // Determina se estamos mexendo com ITENS ou CRIATURAS baseado na aba
+  // NOVO ESTADO: Controle do Menu Mobile
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+
   const getCategoriaAtual = () => {
     if (abaAtiva.includes('arsenal') || abaAtiva === 'criar_item') return 'ITEM';
     return 'CRIATURA';
   };
 
-  // --- CARREGAMENTO DE DADOS ---
   const carregarDados = () => {
     if (abaAtiva === 'criar_criatura' || abaAtiva === 'criar_item') return;
-    
     setLoading(true);
-    const categoria = getCategoriaAtual(); // 'ITEM' ou 'CRIATURA'
-    
-    // URL base depende se é Público ou Meu
+    const categoria = getCategoriaAtual();
     const isPublico = abaAtiva.includes('publico');
     
     let url = '';
-    
     if (pastaAtualId) {
-      // Se estou DENTRO de uma pasta, busco pelo ID (o backend já traz tudo dentro)
       url = `/api/pastas/${pastaAtualId}`;
     } else {
-      // Se estou na RAIZ, listo as raízes filtradas por tipo
       url = isPublico 
         ? `/api/pastas/publicas?tipo=${categoria}`
         : `/api/pastas/meus-bestiarios?tipo=${categoria}`;
@@ -90,19 +74,13 @@ function Dashboard() {
     api.get(url)
       .then(res => {
         if (pastaAtualId) {
-          // Estou dentro de uma pasta
           setConteudo({ 
             pastas: res.data.subPastas || [], 
             criaturas: res.data.criaturas || [],
-            itens: res.data.itens || [] // O backend agora manda itens aqui
+            itens: res.data.itens || [] 
           });
         } else {
-          // Estou na raiz
-          setConteudo({ 
-            pastas: res.data || [], 
-            criaturas: [], 
-            itens: [] 
-          });
+          setConteudo({ pastas: res.data || [], criaturas: [], itens: [] });
         }
       })
       .catch(err => toast.error("Erro ao carregar dados."))
@@ -111,11 +89,12 @@ function Dashboard() {
 
   useEffect(() => { carregarDados(); }, [abaAtiva, pastaAtualId, authenticated]);
 
-  // --- NAVEGAÇÃO ---
-  const resetarNavegacao = (novaAba) => {
+  // Função auxiliar para navegar e fechar o menu no mobile
+  const navegar = (novaAba) => {
     setAbaAtiva(novaAba);
     setPastaAtualId(null);
     setCaminhoPao([{ id: null, nome: 'Raiz' }]);
+    setMenuMobileAberto(false); // Fecha o menu se estiver no mobile
   };
 
   const entrarNaPasta = (pasta) => {
@@ -129,7 +108,6 @@ function Dashboard() {
     setPastaAtualId(novoCaminho[novoCaminho.length - 1].id);
   };
 
-  // --- CRIAÇÃO DE PASTA ---
   const criarPasta = async (e) => {
     e.preventDefault();
     try {
@@ -137,7 +115,7 @@ function Dashboard() {
         nome: novaPastaNome, 
         publica: novaPastaPublica, 
         pastaPaiId: pastaAtualId,
-        categoria: getCategoriaAtual() // <--- Envia 'ITEM' ou 'CRIATURA'
+        categoria: getCategoriaAtual()
       });
       toast.success("Pasta criada!");
       setNovaPastaNome('');
@@ -149,82 +127,108 @@ function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 font-sans">
+    <div className="flex h-screen bg-slate-950 text-slate-200 font-sans overflow-hidden">
       <Toaster richColors theme="dark" position="top-right" />
       {showLoginModal && <AuthModal aoFechar={() => setShowLoginModal(false)} />}
 
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col p-6 overflow-y-auto">
-        <div className="text-2xl font-bold text-rose-600 mb-8 flex items-center gap-2">
-          <LayoutDashboard size={28} /> DrakDex
+      {/* --- OVERLAY MOBILE (Fundo escuro quando menu abre) --- */}
+      {menuMobileAberto && (
+        <div 
+          onClick={() => setMenuMobileAberto(false)}
+          className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm animate-in fade-in"
+        />
+      )}
+
+      {/* --- SIDEBAR RESPONSIVA --- */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col p-6 transition-transform duration-300 ease-in-out
+        ${menuMobileAberto ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0 md:static md:inset-auto
+      `}>
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-2xl font-bold text-rose-600 flex items-center gap-2">
+            <LayoutDashboard size={28} /> DrakDex
+          </div>
+          {/* Botão X para fechar no mobile */}
+          <button onClick={() => setMenuMobileAberto(false)} className="md:hidden text-slate-400 hover:text-white">
+            <X size={24} />
+          </button>
         </div>
         
-        <nav className="flex flex-col gap-2 flex-1">
+        <nav className="flex flex-col gap-2 flex-1 overflow-y-auto">
           <p className="text-xs font-bold text-slate-500 uppercase mt-2 mb-1">Bestiário</p>
-          <button onClick={() => resetarNavegacao('meu_bestiario')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'meu_bestiario' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+          <button onClick={() => navegar('meu_bestiario')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'meu_bestiario' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
             <FolderOpen size={20} /> Meus Monstros
           </button>
-          <button onClick={() => resetarNavegacao('publico_bestiario')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'publico_bestiario' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+          <button onClick={() => navegar('publico_bestiario')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'publico_bestiario' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
             <Globe size={20} /> Público
           </button>
 
           <p className="text-xs font-bold text-slate-500 uppercase mt-6 mb-1">Arsenal</p>
-          <button onClick={() => authenticated ? resetarNavegacao('meu_arsenal') : setShowLoginModal(true)} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'meu_arsenal' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+          <button onClick={() => authenticated ? navegar('meu_arsenal') : setShowLoginModal(true)} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'meu_arsenal' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
             <Backpack size={20} /> Meus Itens
           </button>
-          <button onClick={() => resetarNavegacao('publico_arsenal')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'publico_arsenal' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+          <button onClick={() => navegar('publico_arsenal')} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === 'publico_arsenal' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
             <Globe size={20} /> Arsenal Público
           </button>
         </nav>
       </aside>
 
-      {/* MAIN */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
         {/* HEADER */}
-        <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 backdrop-blur">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            {/* Ícone de Contexto */}
-            {abaAtiva.includes('arsenal') ? <Backpack size={18} className="text-rose-500"/> : <FolderOpen size={18} className="text-rose-500"/>}
+        <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 bg-slate-950/50 backdrop-blur shrink-0">
+          <div className="flex items-center gap-3 text-sm text-slate-400 overflow-hidden">
             
-            {/* Breadcrumbs */}
-            {caminhoPao.map((passo, index) => (
-              <div key={passo.id || 'root'} className="flex items-center gap-2">
-                {index > 0 && <ChevronRight size={14} />}
-                <button onClick={() => voltarPasta(index)} className={`hover:text-white ${index === caminhoPao.length - 1 ? 'text-rose-500 font-bold' : ''}`}>
-                  {passo.nome}
-                </button>
-              </div>
-            ))}
-            {abaAtiva.includes('publico') && <span className="ml-2 text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded border border-blue-800">Modo Público</span>}
+            {/* BOTÃO HAMBÚRGUER (Só aparece no Mobile) */}
+            <button onClick={() => setMenuMobileAberto(true)} className="md:hidden text-slate-200 p-1 hover:bg-slate-800 rounded">
+              <Menu size={24} />
+            </button>
+
+            {/* Ícone de Contexto */}
+            <div className="hidden md:block">
+              {abaAtiva.includes('arsenal') ? <Backpack size={18} className="text-rose-500"/> : <FolderOpen size={18} className="text-rose-500"/>}
+            </div>
+            
+            {/* Breadcrumbs (Scrollável no mobile) */}
+            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 no-scrollbar mask-gradient">
+              {caminhoPao.map((passo, index) => (
+                <div key={passo.id || 'root'} className="flex items-center gap-2">
+                  {index > 0 && <ChevronRight size={14} className="shrink-0" />}
+                  <button onClick={() => voltarPasta(index)} className={`hover:text-white ${index === caminhoPao.length - 1 ? 'text-rose-500 font-bold' : ''}`}>
+                    {passo.nome}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {authenticated ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 shrink-0">
               <span className="text-sm font-bold text-white hidden md:block">{user?.vulgo}</span>
               <button onClick={logout} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-red-500"><LogOut size={20}/></button>
             </div>
           ) : (
-            <button onClick={() => setShowLoginModal(true)} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-bold text-sm"><LogIn size={16}/> Entrar</button>
+            <button onClick={() => setShowLoginModal(true)} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 md:px-4 rounded-lg font-bold text-sm"><LogIn size={16}/> <span className="hidden md:inline">Entrar</span></button>
           )}
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           
-          {/* BOTÕES DE AÇÃO (Nova Pasta / Novo Item / Nova Criatura) */}
+          {/* BOTÕES DE AÇÃO RESPONSIVOS */}
           {authenticated && !abaAtiva.includes('publico') && !abaAtiva.includes('criar') && (
-            <div className="flex gap-4 mb-8">
-              <button onClick={() => setShowCriarPasta(!showCriarPasta)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-700 transition-all">
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              <button onClick={() => setShowCriarPasta(!showCriarPasta)} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-700 transition-all w-full md:w-auto">
                 <Folder size={18} className="text-yellow-500"/> Nova Pasta
               </button>
               
-              {/* Botão contextual: Mostra Criar Criatura OU Criar Item */}
               {getCategoriaAtual() === 'CRIATURA' ? (
-                <button onClick={() => setAbaAtiva('criar_criatura')} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg transition-all">
+                <button onClick={() => setAbaAtiva('criar_criatura')} className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-lg transition-all w-full md:w-auto">
                   <PlusCircle size={18}/> Nova Criatura
                 </button>
               ) : (
-                <button onClick={() => setAbaAtiva('criar_item')} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg transition-all">
+                <button onClick={() => setAbaAtiva('criar_item')} className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-lg transition-all w-full md:w-auto">
                   <PlusCircle size={18}/> Forjar Item
                 </button>
               )}
@@ -268,7 +272,7 @@ function Dashboard() {
             </>
           )}
 
-          {/* --- RENDERIZAÇÃO: MODO BESTIÁRIO (CRIATURAS) --- */}
+          {/* RENDERIZAÇÃO: MODO BESTIÁRIO */}
           {!abaAtiva.includes('criar') && getCategoriaAtual() === 'CRIATURA' && conteudo.criaturas.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {conteudo.criaturas.map((criatura) => (
@@ -289,7 +293,7 @@ function Dashboard() {
             </div>
           )}
 
-          {/* --- RENDERIZAÇÃO: MODO ARSENAL (ITENS) --- */}
+          {/* RENDERIZAÇÃO: MODO ARSENAL */}
           {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && conteudo.itens.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {conteudo.itens.map((item) => {

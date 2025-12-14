@@ -1,6 +1,5 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-// 👇 IMPORTANTE: Usamos 'Key' e removemos totalmente o 'Lock' para evitar o erro
 import { Shield, User, Mail, Key, Ghost, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +21,10 @@ export default function AuthModal({ aoFechar }) {
       if (isLogin) {
         await login(formData.email, formData.senha);
         toast.success(`Bem-vindo de volta!`);
+        
+        // 👇 AQUI: Fechamos o modal automaticamente após o sucesso
+        aoFechar(); 
+
       } else {
         if (formData.senha.length < 8) {
           toast.warning("A senha precisa de pelo menos 8 caracteres!");
@@ -30,6 +33,7 @@ export default function AuthModal({ aoFechar }) {
         }
         await register(formData);
         toast.success("Conta criada! Faça login agora.");
+        // No registro não fechamos, apenas mudamos para a tela de login para o usuário entrar
         setIsLogin(true);
       }
     } catch (error) {
@@ -43,23 +47,16 @@ export default function AuthModal({ aoFechar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl relative">
-        
-        <button onClick={aoFechar} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
-          <X size={24} />
-        </button>
+        <button onClick={aoFechar} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
 
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4 text-rose-600">
-            <Shield size={48} />
-          </div>
+          <div className="flex justify-center mb-4 text-rose-600"><Shield size={48} /></div>
           <h1 className="text-3xl font-bold text-white mb-2">DrakDex</h1>
           <p className="text-slate-400">{isLogin ? "Acesse para criar criaturas" : "Junte-se à ordem"}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
           {!isLogin && (
             <>
               <div className="relative">
@@ -79,7 +76,6 @@ export default function AuthModal({ aoFechar }) {
           </div>
 
           <div className="relative">
-            {/* 👇 USAMOS A CHAVE AQUI AGORA */}
             <Key className="absolute left-3 top-3.5 text-slate-500" size={18} />
             <input type="password" name="senha" placeholder="Senha" className={inputClass} onChange={handleChange} required />
           </div>
