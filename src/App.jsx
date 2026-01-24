@@ -326,27 +326,74 @@ function Dashboard() {
         </div>
       )}
 
-          {/* RENDERIZAÇÃO: MODO ARSENAL */}
-          {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && conteudo.itens.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {conteudo.itens.map((item) => {
-                const corRaridade = CORES_RARIDADE[item.raridade] || "border-slate-700";
-                return (
-                  <div key={item.id} className={`bg-slate-900 border-l-4 ${corRaridade} border-y border-r border-slate-800 rounded-r-xl p-5 hover:bg-slate-800 transition-all shadow-lg`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className={`p-2 rounded-lg bg-slate-950 ${corRaridade.split(" ")[1]}`}>{ICONES_TIPO[item.tipo] || <Feather size={18}/>}</div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-slate-950 ${corRaridade.split(" ")[1]}`}>{item.raridade}</span>
+      {/* --- RENDERIZAÇÃO: MODO ARSENAL (ITENS) --- */}
+      {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && conteudo.itens.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {conteudo.itens.map((item) => {
+            // Pega a classe de cor baseada na raridade (ex: text-blue-400)
+            const corRaridadeClasses = CORES_RARIDADE[item.raridade] || "border-slate-600 text-slate-400";
+            // Extrai apenas a cor do texto para usar em títulos/ícones (gambiarra visual útil)
+            const corTexto = corRaridadeClasses.split(" ").find(c => c.startsWith("text-")) || "text-slate-400";
+            const corBorda = corRaridadeClasses.split(" ").find(c => c.startsWith("border-")) || "border-slate-700";
+
+            return (
+              <div key={item.id} className={`bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg hover:border-slate-600 transition-all group flex flex-col`}>
+                
+                {/* ÁREA DA IMAGEM DO ITEM */}
+                <div className="h-40 w-full bg-slate-950 relative overflow-hidden border-b border-slate-800">
+                  {item.imagemUrl ? (
+                    <img 
+                      src={item.imagemUrl} 
+                      alt={item.nome} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => { 
+                          e.target.onerror = null; 
+                          e.target.style.display = 'none';
+                          e.target.parentNode.classList.add('flex', 'items-center', 'justify-center');
+                          e.target.parentNode.innerHTML = '<span class="text-slate-700 opacity-20"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M13 6h-1v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-1v1"/><path d="m15 9-3 3"/></svg></span>';
+                      }} 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
+                      <Backpack size={48} opacity={0.2} />
                     </div>
-                    <h3 className={`text-lg font-bold mb-1 ${corRaridade.split(" ")[1]}`}>{item.nome}</h3>
-                    <p className="text-xs text-slate-500 uppercase mb-3 font-bold flex gap-2">{item.tipo} {item.peso && `• ${item.peso}kg`} {item.preco && `• ${item.preco}`}</p>
-                    {(item.dano || item.defesa) && (<div className="flex gap-2 mb-3">{item.dano && <span className="text-xs bg-red-900/30 text-red-400 px-2 py-1 rounded border border-red-900/50 font-bold">⚔️ {item.dano}</span>}{item.defesa && <span className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded border border-blue-900/50 font-bold">🛡️ {item.defesa}</span>}</div>)}
-                    <p className="text-sm text-slate-400 italic line-clamp-2">{item.descricao}</p>
-                    <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-800 flex items-center gap-1"><User size={10}/> {item.donoVulgo}</p>
+                  )}
+                  
+                  {/* Badge de Tipo Flutuante */}
+                  <div className="absolute top-2 left-2 bg-black/70 backdrop-blur text-white p-1.5 rounded-lg border border-slate-700 shadow-sm">
+                    {ICONES_TIPO[item.tipo] || <Feather size={16}/>}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+
+                {/* CONTEÚDO DO CARD */}
+                <div className={`p-4 flex-1 flex flex-col border-l-4 ${corBorda}`}>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${corTexto}`}>{item.raridade}</span>
+                    {item.preco && <span className="text-[10px] text-yellow-500 font-mono bg-yellow-900/20 px-1 rounded">💰 {item.preco}</span>}
+                  </div>
+
+                  <h3 className={`text-lg font-bold mb-2 ${corTexto} line-clamp-1`}>{item.nome}</h3>
+                  
+                  {/* Stats Grid */}
+                  {(item.dano || item.defesa || item.peso) && (
+                      <div className="flex gap-2 mb-3 text-xs">
+                          {item.dano && <span className="bg-red-950/50 text-red-400 px-2 py-1 rounded border border-red-900/30 font-bold">⚔️ {item.dano}</span>}
+                          {item.defesa && <span className="bg-blue-950/50 text-blue-400 px-2 py-1 rounded border border-blue-900/30 font-bold">🛡️ {item.defesa}</span>}
+                          {item.peso && <span className="text-slate-500 py-1 ml-auto">{item.peso}kg</span>}
+                      </div>
+                  )}
+
+                  <p className="text-slate-400 text-sm italic line-clamp-2 mb-3 flex-1">{item.descricao}</p>
+                  
+                  <p className="text-[10px] text-slate-600 pt-2 border-t border-slate-800/50 flex items-center gap-1">
+                      <User size={10}/> Forjado por {item.donoVulgo}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
           {/* EMPTY STATES */}
           {!loading && !abaAtiva.includes('criar') && conteudo.pastas.length === 0 && conteudo.criaturas.length === 0 && conteudo.itens.length === 0 && (

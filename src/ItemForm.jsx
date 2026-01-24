@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { api } from './services/api';
 import { toast } from 'sonner';
-import { Sword, Loader2, Save } from 'lucide-react';
+import { Sword, Loader2, Save, Image as ImageIcon } from 'lucide-react';
 
-// 👇 1. AQUI: Adicionamos 'pastaId' nas propriedades que o componente recebe
 export default function ItemForm({ aoCriar, pastaId }) {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
@@ -15,7 +14,8 @@ export default function ItemForm({ aoCriar, pastaId }) {
     preco: '',
     dano: '',
     defesa: '',
-    propriedades: ''
+    propriedades: '',
+    imagemUrl: '' // <--- NOVO
   });
 
   const handleChange = (e) => {
@@ -26,17 +26,16 @@ export default function ItemForm({ aoCriar, pastaId }) {
     e.preventDefault();
     setLoading(true);
     try {
-      // 👇 2. AQUI: Incluímos o pastaId no objeto que vai para o Backend
       const payload = { 
         ...dados, 
         peso: dados.peso ? parseFloat(dados.peso) : null,
-        pastaId: pastaId // <--- Essencial para vincular à pasta!
+        pastaId: pastaId 
       };
 
       const response = await api.post('/api/itens', payload);
       toast.success("Item forjado com sucesso! ⚔️");
       
-      setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '' });
+      setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '', imagemUrl: '' });
       
       if (aoCriar) aoCriar(response.data);
     } catch (error) {
@@ -50,7 +49,7 @@ export default function ItemForm({ aoCriar, pastaId }) {
   const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase";
 
   return (
-    <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
+    <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm animate-in fade-in">
       <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
         <Sword className="text-rose-500" /> Forjar Novo Item
       </h2>
@@ -65,6 +64,15 @@ export default function ItemForm({ aoCriar, pastaId }) {
           <div>
             <label className={labelClass}>Preço (Valor)</label>
             <input name="preco" value={dados.preco} onChange={handleChange} className={inputClass} placeholder="Ex: 500 PO" />
+          </div>
+        </div>
+
+        {/* 👇 NOVO CAMPO DE IMAGEM */}
+        <div>
+          <label className={labelClass}>URL da Imagem (Opcional)</label>
+          <div className="relative">
+            <ImageIcon className="absolute left-3 top-2.5 text-slate-500" size={18} />
+            <input name="imagemUrl" value={dados.imagemUrl} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="https://..." />
           </div>
         </div>
 
@@ -115,7 +123,7 @@ export default function ItemForm({ aoCriar, pastaId }) {
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2">
-          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> {pastaId ? "Salvar nesta Pasta" : "Salvar no Arsenal"}</>}
+          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> Salvar no Arsenal</>}
         </button>
 
       </form>
