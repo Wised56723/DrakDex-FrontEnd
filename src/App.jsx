@@ -235,20 +235,47 @@ function Dashboard() {
             </div>
           )}
 
-          {/* FORMULÁRIO DE CRIAR PASTA */}
-          {showCriarPasta && (
-            <form onSubmit={criarPasta} className="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-8 flex gap-4 items-end animate-in fade-in">
-              <div className="flex-1">
-                <label className="text-xs text-slate-400 block mb-1">Nome da Pasta ({getCategoriaAtual()})</label>
-                <input value={novaPastaNome} onChange={e => setNovaPastaNome(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" required />
-              </div>
-              <div className="flex items-center gap-2 pb-2">
-                <input type="checkbox" checked={novaPastaPublica} onChange={e => setNovaPastaPublica(e.target.checked)} className="accent-rose-600 h-4 w-4" />
-                <label className="text-sm">Pública?</label>
-              </div>
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-            </form>
-          )}
+      {/* FORMULÁRIO DE CRIAR PASTA */}
+                {showCriarPasta && (
+                  <form onSubmit={criarPasta} className="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-8 flex flex-col md:flex-row gap-4 items-end animate-in fade-in">
+                    <div className="flex-1 w-full">
+                      <label className="text-xs text-slate-400 block mb-1">Nome da Pasta ({getCategoriaAtual()})</label>
+                      <input 
+                        value={novaPastaNome} 
+                        onChange={e => setNovaPastaNome(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-rose-500 outline-none" 
+                        required 
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pb-3">
+                      <input 
+                        type="checkbox" 
+                        checked={novaPastaPublica} 
+                        onChange={e => setNovaPastaPublica(e.target.checked)} 
+                        className="accent-rose-600 h-4 w-4" 
+                      />
+                      <label className="text-sm">Pública?</label>
+                    </div>
+
+                    <div className="flex gap-2 w-full md:w-auto">
+                      <button 
+                        type="button" // Importante ser type="button" para não submeter o form
+                        onClick={() => setShowCriarPasta(false)} 
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors flex-1 md:flex-none"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  </form>
+                )}
 
           {/* LISTA DE PASTAS */}
           {!abaAtiva.includes('criar') && conteudo.pastas.length > 0 && (
