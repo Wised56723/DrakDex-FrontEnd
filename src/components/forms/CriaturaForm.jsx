@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from './services/api';
+import { api } from '../../services/api';
 import { toast } from 'sonner';
 import { Shield, Loader2, Save, Image as ImageIcon } from 'lucide-react';
 
