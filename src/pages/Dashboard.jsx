@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { FolderOpen, Folder, PlusCircle } from 'lucide-react';
+import { FolderOpen, Folder, PlusCircle, Search } from 'lucide-react'; // Search importado
 import { toast, Toaster } from 'sonner';
 
 import Sidebar from '../components/layout/Sidebar';
@@ -26,18 +26,20 @@ export default function Dashboard() {
   const [conteudo, setConteudo] = useState({ pastas: [], criaturas: [], itens: [] });
   const [loading, setLoading] = useState(false);
   
+  // --- ESTADO DE BUSCA (NOVO) ---
+  const [termoBusca, setTermoBusca] = useState('');
+
   // --- ESTADOS UI ---
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [itemParaDeletar, setItemParaDeletar] = useState(null);
 
-  // --- ESTADOS DE EDIÇÃO (PASTA, CRIATURA, ITEM) ---
+  // --- ESTADOS DE EDIÇÃO ---
   const [showCriarPasta, setShowCriarPasta] = useState(false); 
   const [novaPastaNome, setNovaPastaNome] = useState('');
   const [novaPastaPublica, setNovaPastaPublica] = useState(false);
   const [pastaEmEdicaoId, setPastaEmEdicaoId] = useState(null);
   
-  // Novos estados para edição
   const [criaturaParaEditar, setCriaturaParaEditar] = useState(null);
   const [itemParaEditar, setItemParaEditar] = useState(null);
 
@@ -83,12 +85,13 @@ export default function Dashboard() {
 
   useEffect(() => { carregarDados(); }, [abaAtiva, pastaAtualId, authenticated]);
 
+  // Limpar busca ao navegar
   const navegar = (novaAba) => {
     setAbaAtiva(novaAba);
     setPastaAtualId(null);
     setCaminhoPao([{ id: null, nome: 'Raiz' }]);
     setMenuMobileAberto(false);
-    // Limpar edições ao navegar
+    setTermoBusca(''); // Limpa busca
     cancelarEdicoes();
   };
 
@@ -102,16 +105,30 @@ export default function Dashboard() {
     const novoCaminho = caminhoPao.slice(0, indice + 1);
     setCaminhoPao(novoCaminho);
     setPastaAtualId(novoCaminho[novoCaminho.length - 1].id);
+    setTermoBusca(''); // Limpa busca
     cancelarEdicoes();
   };
 
   const entrarNaPasta = (pasta) => {
     setPastaAtualId(pasta.id);
     setCaminhoPao([...caminhoPao, { id: pasta.id, nome: pasta.nome }]);
+    setTermoBusca(''); // Limpa busca
     cancelarEdicoes();
   };
 
-  // --- LÓGICA DE PASTA ---
+  // --- LÓGICA DE FILTRAGEM (NOVO) ---
+  const filtrarConteudo = (lista, campo) => {
+    if (!termoBusca) return lista;
+    return lista.filter(item => 
+      item[campo].toLowerCase().includes(termoBusca.toLowerCase())
+    );
+  };
+
+  const pastasFiltradas = filtrarConteudo(conteudo.pastas, 'nome');
+  const criaturasFiltradas = filtrarConteudo(conteudo.criaturas, 'nome');
+  const itensFiltrados = filtrarConteudo(conteudo.itens, 'nome');
+
+  // --- CRUD LÓGICA (MANTIDA IGUAL) ---
   const salvarPasta = async (e) => {
     e.preventDefault();
     try {
@@ -150,26 +167,11 @@ export default function Dashboard() {
     setShowCriarPasta(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // --- LÓGICA DE CRIATURA E ITEM (NOVO) ---
   
-  const prepararEdicaoCriatura = (criatura) => {
-    setCriaturaParaEditar(criatura);
-    setAbaAtiva('criar_criatura');
-  };
+  const prepararEdicaoCriatura = (criatura) => { setCriaturaParaEditar(criatura); setAbaAtiva('criar_criatura'); };
+  const prepararEdicaoItem = (item) => { setItemParaEditar(item); setAbaAtiva('criar_item'); };
+  const aoConcluirEdicao = () => { setAbaAtiva(itemParaEditar ? 'meu_arsenal' : 'meu_bestiario'); cancelarEdicoes(); carregarDados(); };
 
-  const prepararEdicaoItem = (item) => {
-    setItemParaEditar(item);
-    setAbaAtiva('criar_item');
-  };
-
-  const aoConcluirEdicao = () => {
-    setAbaAtiva(itemParaEditar ? 'meu_arsenal' : 'meu_bestiario');
-    cancelarEdicoes();
-    carregarDados();
-  };
-
-  // --- DELEÇÃO ---
   const solicitarDelecao = (e, url, nome, tipo) => {
     if(e) e.stopPropagation();
     setItemParaDeletar({ url, nome, tipo });
@@ -193,15 +195,9 @@ export default function Dashboard() {
       <Toaster richColors theme="dark" position="top-right" />
       {showLoginModal && <AuthModal aoFechar={() => setShowLoginModal(false)} />}
       
-      <DeleteConfirmationModal 
-        item={itemParaDeletar} 
-        aoConfirmar={confirmarDelecao} 
-        aoCancelar={() => setItemParaDeletar(null)} 
-      />
+      <DeleteConfirmationModal item={itemParaDeletar} aoConfirmar={confirmarDelecao} aoCancelar={() => setItemParaDeletar(null)} />
 
-      {menuMobileAberto && (
-        <div onClick={() => setMenuMobileAberto(false)} className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm animate-in fade-in" />
-      )}
+      {menuMobileAberto && <div onClick={() => setMenuMobileAberto(false)} className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm animate-in fade-in" />}
 
       <Sidebar 
         abaAtiva={abaAtiva}
@@ -222,11 +218,12 @@ export default function Dashboard() {
           user={user}
           logout={logout}
           abrirLogin={() => setShowLoginModal(true)}
+          termoBusca={termoBusca} // <--- Passando estado
+          setTermoBusca={setTermoBusca} // <--- Passando setter
         />
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           
-          {/* BARRA DE AÇÕES */}
           {authenticated && !abaAtiva.includes('publico') && !abaAtiva.includes('criar') && (
             <div className="flex flex-col md:flex-row gap-4 mb-8">
               <button onClick={() => { resetarFormPasta(); setShowCriarPasta(true); }} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-700 transition-all w-full md:w-auto">
@@ -245,7 +242,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* FORMULÁRIO DE PASTA */}
           {showCriarPasta && (
             <PastaForm 
               nome={novaPastaNome}
@@ -259,75 +255,53 @@ export default function Dashboard() {
             />
           )}
 
-          {/* LISTAS (COM FUNÇÕES DE EDIÇÃO CONECTADAS) */}
-          {!abaAtiva.includes('criar') && conteudo.pastas.length > 0 && (
+          {/* RENDERIZAÇÃO DAS LISTAS FILTRADAS */}
+          {!abaAtiva.includes('criar') && pastasFiltradas.length > 0 && (
             <>
               <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Pastas</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
-                {conteudo.pastas.map(pasta => (
+                {pastasFiltradas.map(pasta => (
                   <PastaCard key={pasta.id} pasta={pasta} aoEntrar={entrarNaPasta} aoEditar={prepararEdicaoPasta} aoDeletar={solicitarDelecao} podeEditar={authenticated && !abaAtiva.includes('publico')} categoria={getCategoriaAtual()} />
                 ))}
               </div>
             </>
           )}
 
-          {!abaAtiva.includes('criar') && getCategoriaAtual() === 'CRIATURA' && conteudo.criaturas.length > 0 && (
+          {!abaAtiva.includes('criar') && getCategoriaAtual() === 'CRIATURA' && criaturasFiltradas.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {conteudo.criaturas.map((criatura) => (
-                <CriaturaCard 
-                  key={criatura.id} 
-                  criatura={criatura} 
-                  aoDeletar={solicitarDelecao} 
-                  aoEditar={prepararEdicaoCriatura} // <--- NOVO
-                  podeEditar={authenticated && !abaAtiva.includes('publico')} 
-                />
+              {criaturasFiltradas.map((criatura) => (
+                <CriaturaCard key={criatura.id} criatura={criatura} aoDeletar={solicitarDelecao} aoEditar={prepararEdicaoCriatura} podeEditar={authenticated && !abaAtiva.includes('publico')} />
               ))}
             </div>
           )}
 
-          {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && conteudo.itens.length > 0 && (
+          {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && itensFiltrados.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {conteudo.itens.map((item) => (
-                <ItemCard 
-                  key={item.id} 
-                  item={item} 
-                  aoDeletar={solicitarDelecao} 
-                  aoEditar={prepararEdicaoItem} // <--- NOVO
-                  podeEditar={authenticated && !abaAtiva.includes('publico')} 
-                />
+              {itensFiltrados.map((item) => (
+                <ItemCard key={item.id} item={item} aoDeletar={solicitarDelecao} aoEditar={prepararEdicaoItem} podeEditar={authenticated && !abaAtiva.includes('publico')} />
               ))}
             </div>
           )}
 
-          {/* EMPTY STATES */}
-          {!loading && !abaAtiva.includes('criar') && conteudo.pastas.length === 0 && conteudo.criaturas.length === 0 && conteudo.itens.length === 0 && (
-            <div className="text-center text-slate-600 mt-20"><FolderOpen size={64} className="mx-auto mb-4 opacity-20"/><p>Nenhum registro encontrado neste tomo.</p></div>
+          {/* EMPTY STATE BUSCA */}
+          {!loading && !abaAtiva.includes('criar') && pastasFiltradas.length === 0 && criaturasFiltradas.length === 0 && itensFiltrados.length === 0 && (
+            <div className="text-center text-slate-600 mt-20">
+              {termoBusca ? (
+                <>
+                  <Search size={64} className="mx-auto mb-4 opacity-20"/>
+                  <p>Nenhum resultado para "{termoBusca}".</p>
+                </>
+              ) : (
+                <>
+                  <FolderOpen size={64} className="mx-auto mb-4 opacity-20"/>
+                  <p>Nenhum registro encontrado neste tomo.</p>
+                </>
+              )}
+            </div>
           )}
 
-          {/* FORMULÁRIOS DE CRIAÇÃO/EDIÇÃO (COM NOVAS PROPS) */}
-          {abaAtiva === 'criar_criatura' && (
-            <div className="max-w-2xl mx-auto">
-              <button onClick={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar</button>
-              <CriaturaForm 
-                pastaId={pastaAtualId} 
-                criaturaParaEditar={criaturaParaEditar} // <--- NOVO
-                aoCriar={aoConcluirEdicao} // <--- REAPROVEITADO
-                aoCancelar={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} // <--- NOVO
-              />
-            </div>
-          )}
-          
-          {abaAtiva === 'criar_item' && (
-            <div className="max-w-2xl mx-auto">
-              <button onClick={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar ao Arsenal</button>
-              <ItemForm 
-                pastaId={pastaAtualId} 
-                itemParaEditar={itemParaEditar} // <--- NOVO
-                aoCriar={aoConcluirEdicao} // <--- REAPROVEITADO
-                aoCancelar={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} // <--- NOVO
-              />
-            </div>
-          )}
+          {abaAtiva === 'criar_criatura' && (<div className="max-w-2xl mx-auto"><button onClick={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar</button><CriaturaForm pastaId={pastaAtualId} criaturaParaEditar={criaturaParaEditar} aoCriar={aoConcluirEdicao} aoCancelar={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} /></div>)}
+          {abaAtiva === 'criar_item' && (<div className="max-w-2xl mx-auto"><button onClick={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar ao Arsenal</button><ItemForm pastaId={pastaAtualId} itemParaEditar={itemParaEditar} aoCriar={aoConcluirEdicao} aoCancelar={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} /></div>)}
         </div>
       </main>
     </div>
