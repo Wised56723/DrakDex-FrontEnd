@@ -1,9 +1,8 @@
 import { 
   Shield, Sword, Hammer, Gem, FlaskConical, Feather, 
-  Trash2, User, Backpack 
+  Trash2, User, Backpack, Pencil 
 } from 'lucide-react';
 
-// Constantes Visuais Locais
 const CORES_RARIDADE = {
   COMUM: "border-slate-600 text-slate-400",
   INCOMUM: "border-green-600 text-green-400",
@@ -23,8 +22,7 @@ const ICONES_TIPO = {
   OUTRO: <Feather size={18} />
 };
 
-export default function ItemCard({ item, aoDeletar, podeDeletar }) {
-  // Lógica de Cores
+export default function ItemCard({ item, aoDeletar, aoEditar, podeEditar }) {
   const corRaridadeClasses = CORES_RARIDADE[item.raridade] || "border-slate-600 text-slate-400";
   const corTexto = corRaridadeClasses.split(" ").find(c => c.startsWith("text-")) || "text-slate-400";
   const corBorda = corRaridadeClasses.split(" ").find(c => c.startsWith("border-")) || "border-slate-700";
@@ -32,9 +30,17 @@ export default function ItemCard({ item, aoDeletar, podeDeletar }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg hover:border-slate-600 transition-all group flex flex-col relative">
       
-      {/* Botão Deletar */}
-      {podeDeletar && (
+      {/* Botões de Ação */}
+      {podeEditar && (
         <div className="absolute top-2 right-2 z-10 flex gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); aoEditar(item); }} 
+            className="p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-blue-600 transition-colors"
+            title="Editar Item"
+          >
+            <Pencil size={16}/>
+          </button>
+
           <button 
             onClick={(e) => aoDeletar(e, `/api/itens/${item.id}`, item.nome, 'Item')} 
             className="p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-red-600 transition-colors"
@@ -64,7 +70,6 @@ export default function ItemCard({ item, aoDeletar, podeDeletar }) {
           </div>
         )}
         
-        {/* Ícone Tipo */}
         <div className="absolute top-2 left-2 bg-black/70 backdrop-blur text-white p-1.5 rounded-lg border border-slate-700 shadow-sm">
           {ICONES_TIPO[item.tipo] || <Feather size={16}/>}
         </div>
@@ -85,7 +90,6 @@ export default function ItemCard({ item, aoDeletar, podeDeletar }) {
 
         <h3 className={`text-lg font-bold mb-2 ${corTexto} line-clamp-1`}>{item.nome}</h3>
         
-        {/* Stats Grid */}
         {(item.dano || item.defesa || item.peso) && (
             <div className="flex gap-2 mb-3 text-xs">
                 {item.dano && <span className="bg-red-950/50 text-red-400 px-2 py-1 rounded border border-red-900/30 font-bold">⚔️ {item.dano}</span>}

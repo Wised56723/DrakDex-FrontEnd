@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { toast } from 'sonner';
-import { Shield, Loader2, Save, Image as ImageIcon } from 'lucide-react';
+import { Shield, Loader2, Save, Image as ImageIcon, X } from 'lucide-react';
 
-export default function CriaturaForm({ pastaId, aoCriar }) {
+export default function CriaturaForm({ pastaId, aoCriar, criaturaParaEditar, aoCancelar }) {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
     nome: '',
     descricao: '',
     nivel: 1,
     tipo: 'Monstruosidade',
-    imagemUrl: '' // <--- NOVO CAMPO NO ESTADO
+    imagemUrl: ''
   });
+
+  // Efeito para carregar dados se for edição
+  useEffect(() => {
+    if (criaturaParaEditar) {
+      setDados({
+        nome: criaturaParaEditar.nome,
+        descricao: criaturaParaEditar.descricao || '',
+        nivel: criaturaParaEditar.nivel,
+        tipo: criaturaParaEditar.tipo,
+        imagemUrl: criaturaParaEditar.imagemUrl || ''
+      });
+    } else {
+      // Limpa se for criação nova
+      setDados({ nome: '', descricao: '', nivel: 1, tipo: 'Monstruosidade', imagemUrl: '' });
+    }
+  }, [criaturaParaEditar]);
 
   const handleChange = (e) => {
     setDados({ ...dados, [e.target.name]: e.target.value });
@@ -21,16 +37,25 @@ export default function CriaturaForm({ pastaId, aoCriar }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { ...dados, pastaId };
-      const response = await api.post('/api/criaturas', payload);
-      toast.success("Criatura invocada com sucesso!");
+      if (criaturaParaEditar) {
+        // MODO EDIÇÃO (PUT)
+        await api.put(`/api/criaturas/${criaturaParaEditar.id}`, dados);
+        toast.success("Criatura atualizada com sucesso!");
+      } else {
+        // MODO CRIAÇÃO (POST)
+        const payload = { ...dados, pastaId };
+        await api.post('/api/criaturas', payload);
+        toast.success("Criatura invocada com sucesso!");
+      }
       
-      // Limpar form
-      setDados({ nome: '', descricao: '', nivel: 1, tipo: 'Monstruosidade', imagemUrl: '' });
+      // Limpar form se não for edição (ou fechar form)
+      if (!criaturaParaEditar) {
+        setDados({ nome: '', descricao: '', nivel: 1, tipo: 'Monstruosidade', imagemUrl: '' });
+      }
       
-      if (aoCriar) aoCriar(response.data);
+      if (aoCriar) aoCriar(); // Recarrega a lista
     } catch (error) {
-      toast.error("Erro ao invocar: " + (error.response?.data?.message || error.message));
+      toast.error("Erro: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -42,7 +67,7 @@ export default function CriaturaForm({ pastaId, aoCriar }) {
   return (
     <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm animate-in fade-in">
       <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-        <Shield className="text-rose-500" /> Nova Criatura
+        <Shield className="text-rose-500" /> {criaturaParaEditar ? 'Editar Criatura' : 'Nova Criatura'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -66,20 +91,12 @@ export default function CriaturaForm({ pastaId, aoCriar }) {
           </div>
         </div>
 
-        {/* 👇 NOVO CAMPO DE URL DE IMAGEM */}
         <div>
           <label className={labelClass}>URL da Imagem (Opcional)</label>
           <div className="relative">
             <ImageIcon className="absolute left-3 top-2.5 text-slate-500" size={18} />
-            <input 
-              name="imagemUrl" 
-              value={dados.imagemUrl} 
-              onChange={handleChange} 
-              className={`${inputClass} pl-10`} 
-              placeholder="https://..." 
-            />
+            <input name="imagemUrl" value={dados.imagemUrl} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="https://..." />
           </div>
-          <p className="text-[10px] text-slate-500 mt-1 ml-1">Cole o link direto de uma imagem (JPG, PNG, WebP).</p>
         </div>
 
         <div className="grid grid-cols-4 gap-4">
@@ -93,9 +110,24 @@ export default function CriaturaForm({ pastaId, aoCriar }) {
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2">
-          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> Invocar no Bestiário</>}
-        </button>
+        <div className="flex gap-3 pt-2">
+          {/* Botão Cancelar (Aparece sempre agora, útil para fechar o modo edição) */}
+          <button 
+            type="button" 
+            onClick={aoCancelar}
+            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded transition-all flex justify-center items-center gap-2"
+          >
+            <X size={18}/> Cancelar
+          </button>
+
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="flex-[2] bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2"
+          >
+            {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> {criaturaParaEditar ? 'Atualizar' : 'Invocar'}</>}
+          </button>
+        </div>
 
       </form>
     </div>

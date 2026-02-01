@@ -1,17 +1,16 @@
 import { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '../contexts/AuthContext'; // Ajustado ../
-import { api } from '../services/api'; // Ajustado ../
+import { AuthContext } from '../contexts/AuthContext';
+import { api } from '../services/api';
 import { FolderOpen, Folder, PlusCircle } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
-// --- COMPONENTES (Caminhos ajustados com ../) ---
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
 import CriaturaForm from '../components/forms/CriaturaForm';
 import ItemForm from '../components/forms/ItemForm'; 
 import PastaForm from '../components/forms/PastaForm'; 
 
-import AuthModal from '../components/AuthModal'; // Ajuste se moveu para components/modals ou mantenha se estiver solto
+import AuthModal from '../components/AuthModal'; 
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal';
 import PastaCard from '../components/cards/PastaCard';
 import CriaturaCard from '../components/cards/CriaturaCard';
@@ -32,11 +31,15 @@ export default function Dashboard() {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [itemParaDeletar, setItemParaDeletar] = useState(null);
 
-  // --- ESTADOS FORM PASTA ---
+  // --- ESTADOS DE EDIÇÃO (PASTA, CRIATURA, ITEM) ---
   const [showCriarPasta, setShowCriarPasta] = useState(false); 
   const [novaPastaNome, setNovaPastaNome] = useState('');
   const [novaPastaPublica, setNovaPastaPublica] = useState(false);
   const [pastaEmEdicaoId, setPastaEmEdicaoId] = useState(null);
+  
+  // Novos estados para edição
+  const [criaturaParaEditar, setCriaturaParaEditar] = useState(null);
+  const [itemParaEditar, setItemParaEditar] = useState(null);
 
   const getCategoriaAtual = () => {
     if (abaAtiva.includes('arsenal') || abaAtiva === 'criar_item') return 'ITEM';
@@ -85,19 +88,30 @@ export default function Dashboard() {
     setPastaAtualId(null);
     setCaminhoPao([{ id: null, nome: 'Raiz' }]);
     setMenuMobileAberto(false);
+    // Limpar edições ao navegar
+    cancelarEdicoes();
+  };
+
+  const cancelarEdicoes = () => {
+    setCriaturaParaEditar(null);
+    setItemParaEditar(null);
+    resetarFormPasta();
   };
 
   const voltarPasta = (indice) => {
     const novoCaminho = caminhoPao.slice(0, indice + 1);
     setCaminhoPao(novoCaminho);
     setPastaAtualId(novoCaminho[novoCaminho.length - 1].id);
+    cancelarEdicoes();
   };
 
   const entrarNaPasta = (pasta) => {
     setPastaAtualId(pasta.id);
     setCaminhoPao([...caminhoPao, { id: pasta.id, nome: pasta.nome }]);
+    cancelarEdicoes();
   };
 
+  // --- LÓGICA DE PASTA ---
   const salvarPasta = async (e) => {
     e.preventDefault();
     try {
@@ -137,6 +151,25 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // --- LÓGICA DE CRIATURA E ITEM (NOVO) ---
+  
+  const prepararEdicaoCriatura = (criatura) => {
+    setCriaturaParaEditar(criatura);
+    setAbaAtiva('criar_criatura');
+  };
+
+  const prepararEdicaoItem = (item) => {
+    setItemParaEditar(item);
+    setAbaAtiva('criar_item');
+  };
+
+  const aoConcluirEdicao = () => {
+    setAbaAtiva(itemParaEditar ? 'meu_arsenal' : 'meu_bestiario');
+    cancelarEdicoes();
+    carregarDados();
+  };
+
+  // --- DELEÇÃO ---
   const solicitarDelecao = (e, url, nome, tipo) => {
     if(e) e.stopPropagation();
     setItemParaDeletar({ url, nome, tipo });
@@ -193,6 +226,7 @@ export default function Dashboard() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           
+          {/* BARRA DE AÇÕES */}
           {authenticated && !abaAtiva.includes('publico') && !abaAtiva.includes('criar') && (
             <div className="flex flex-col md:flex-row gap-4 mb-8">
               <button onClick={() => { resetarFormPasta(); setShowCriarPasta(true); }} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-700 transition-all w-full md:w-auto">
@@ -211,6 +245,7 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* FORMULÁRIO DE PASTA */}
           {showCriarPasta && (
             <PastaForm 
               nome={novaPastaNome}
@@ -224,6 +259,7 @@ export default function Dashboard() {
             />
           )}
 
+          {/* LISTAS (COM FUNÇÕES DE EDIÇÃO CONECTADAS) */}
           {!abaAtiva.includes('criar') && conteudo.pastas.length > 0 && (
             <>
               <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Pastas</h3>
@@ -238,7 +274,13 @@ export default function Dashboard() {
           {!abaAtiva.includes('criar') && getCategoriaAtual() === 'CRIATURA' && conteudo.criaturas.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {conteudo.criaturas.map((criatura) => (
-                <CriaturaCard key={criatura.id} criatura={criatura} aoDeletar={solicitarDelecao} podeDeletar={authenticated && !abaAtiva.includes('publico')} />
+                <CriaturaCard 
+                  key={criatura.id} 
+                  criatura={criatura} 
+                  aoDeletar={solicitarDelecao} 
+                  aoEditar={prepararEdicaoCriatura} // <--- NOVO
+                  podeEditar={authenticated && !abaAtiva.includes('publico')} 
+                />
               ))}
             </div>
           )}
@@ -246,17 +288,46 @@ export default function Dashboard() {
           {!abaAtiva.includes('criar') && getCategoriaAtual() === 'ITEM' && conteudo.itens.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {conteudo.itens.map((item) => (
-                <ItemCard key={item.id} item={item} aoDeletar={solicitarDelecao} podeDeletar={authenticated && !abaAtiva.includes('publico')} />
+                <ItemCard 
+                  key={item.id} 
+                  item={item} 
+                  aoDeletar={solicitarDelecao} 
+                  aoEditar={prepararEdicaoItem} // <--- NOVO
+                  podeEditar={authenticated && !abaAtiva.includes('publico')} 
+                />
               ))}
             </div>
           )}
 
+          {/* EMPTY STATES */}
           {!loading && !abaAtiva.includes('criar') && conteudo.pastas.length === 0 && conteudo.criaturas.length === 0 && conteudo.itens.length === 0 && (
             <div className="text-center text-slate-600 mt-20"><FolderOpen size={64} className="mx-auto mb-4 opacity-20"/><p>Nenhum registro encontrado neste tomo.</p></div>
           )}
 
-          {abaAtiva === 'criar_criatura' && (<div className="max-w-2xl mx-auto"><button onClick={() => setAbaAtiva('meu_bestiario')} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar</button><CriaturaForm pastaId={pastaAtualId} aoCriar={(nova) => { setAbaAtiva('meu_bestiario'); carregarDados(); }} /></div>)}
-          {abaAtiva === 'criar_item' && (<div className="max-w-2xl mx-auto"><button onClick={() => setAbaAtiva('meu_arsenal')} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar ao Arsenal</button><ItemForm pastaId={pastaAtualId} aoCriar={(novo) => { setAbaAtiva('meu_arsenal'); carregarDados(); }} /></div>)}
+          {/* FORMULÁRIOS DE CRIAÇÃO/EDIÇÃO (COM NOVAS PROPS) */}
+          {abaAtiva === 'criar_criatura' && (
+            <div className="max-w-2xl mx-auto">
+              <button onClick={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar</button>
+              <CriaturaForm 
+                pastaId={pastaAtualId} 
+                criaturaParaEditar={criaturaParaEditar} // <--- NOVO
+                aoCriar={aoConcluirEdicao} // <--- REAPROVEITADO
+                aoCancelar={() => { setAbaAtiva('meu_bestiario'); cancelarEdicoes(); }} // <--- NOVO
+              />
+            </div>
+          )}
+          
+          {abaAtiva === 'criar_item' && (
+            <div className="max-w-2xl mx-auto">
+              <button onClick={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} className="mb-4 text-slate-400 hover:text-white flex items-center gap-2">← Voltar ao Arsenal</button>
+              <ItemForm 
+                pastaId={pastaAtualId} 
+                itemParaEditar={itemParaEditar} // <--- NOVO
+                aoCriar={aoConcluirEdicao} // <--- REAPROVEITADO
+                aoCancelar={() => { setAbaAtiva('meu_arsenal'); cancelarEdicoes(); }} // <--- NOVO
+              />
+            </div>
+          )}
         </div>
       </main>
     </div>

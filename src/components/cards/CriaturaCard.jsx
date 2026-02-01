@@ -1,12 +1,20 @@
-import { Shield, Trash2, User } from 'lucide-react';
+import { Shield, Trash2, User, Pencil } from 'lucide-react';
 
-export default function CriaturaCard({ criatura, aoDeletar, podeDeletar }) {
+export default function CriaturaCard({ criatura, aoDeletar, aoEditar, podeEditar }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg hover:border-rose-600/30 transition-all group relative">
       
-      {/* Botão de Deletar (Condicional) */}
-      {podeDeletar && (
+      {/* Botões de Ação (Editar e Deletar) */}
+      {podeEditar && (
         <div className="absolute top-2 left-2 z-10 flex gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); aoEditar(criatura); }} 
+            className="p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-blue-600 transition-colors"
+            title="Editar Criatura"
+          >
+            <Pencil size={16}/>
+          </button>
+          
           <button 
             onClick={(e) => aoDeletar(e, `/api/criaturas/${criatura.id}`, criatura.nome, 'Criatura')} 
             className="p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-red-600 transition-colors"

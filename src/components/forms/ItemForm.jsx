@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { toast } from 'sonner';
-import { Sword, Loader2, Save, Image as ImageIcon } from 'lucide-react';
+import { Sword, Loader2, Save, Image as ImageIcon, X } from 'lucide-react';
 
-export default function ItemForm({ aoCriar, pastaId }) {
+export default function ItemForm({ aoCriar, pastaId, itemParaEditar, aoCancelar }) {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
     nome: '',
@@ -15,8 +15,28 @@ export default function ItemForm({ aoCriar, pastaId }) {
     dano: '',
     defesa: '',
     propriedades: '',
-    imagemUrl: '' // <--- NOVO
+    imagemUrl: ''
   });
+
+  // Efeito para carregar dados se for edição
+  useEffect(() => {
+    if (itemParaEditar) {
+      setDados({
+        nome: itemParaEditar.nome,
+        descricao: itemParaEditar.descricao || '',
+        tipo: itemParaEditar.tipo,
+        raridade: itemParaEditar.raridade,
+        peso: itemParaEditar.peso || '',
+        preco: itemParaEditar.preco || '',
+        dano: itemParaEditar.dano || '',
+        defesa: itemParaEditar.defesa || '',
+        propriedades: itemParaEditar.propriedades || '',
+        imagemUrl: itemParaEditar.imagemUrl || ''
+      });
+    } else {
+      setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '', imagemUrl: '' });
+    }
+  }, [itemParaEditar]);
 
   const handleChange = (e) => {
     setDados({ ...dados, [e.target.name]: e.target.value });
@@ -29,17 +49,26 @@ export default function ItemForm({ aoCriar, pastaId }) {
       const payload = { 
         ...dados, 
         peso: dados.peso ? parseFloat(dados.peso) : null,
-        pastaId: pastaId 
+        pastaId: pastaId // Ignorado pelo backend no PUT, mas necessário no POST
       };
 
-      const response = await api.post('/api/itens', payload);
-      toast.success("Item forjado com sucesso! ⚔️");
+      if (itemParaEditar) {
+        // MODO EDIÇÃO (PUT)
+        await api.put(`/api/itens/${itemParaEditar.id}`, payload);
+        toast.success("Item reforjado com sucesso!");
+      } else {
+        // MODO CRIAÇÃO (POST)
+        await api.post('/api/itens', payload);
+        toast.success("Item forjado com sucesso!");
+      }
       
-      setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '', imagemUrl: '' });
+      if (!itemParaEditar) {
+        setDados({ nome: '', descricao: '', tipo: 'ARMA', raridade: 'COMUM', peso: '', preco: '', dano: '', defesa: '', propriedades: '', imagemUrl: '' });
+      }
       
-      if (aoCriar) aoCriar(response.data);
+      if (aoCriar) aoCriar();
     } catch (error) {
-      toast.error("Erro ao criar item: " + (error.response?.data?.message || error.message));
+      toast.error("Erro: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -51,7 +80,7 @@ export default function ItemForm({ aoCriar, pastaId }) {
   return (
     <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm animate-in fade-in">
       <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-        <Sword className="text-rose-500" /> Forjar Novo Item
+        <Sword className="text-rose-500" /> {itemParaEditar ? 'Reforjar Item' : 'Forjar Novo Item'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,7 +96,6 @@ export default function ItemForm({ aoCriar, pastaId }) {
           </div>
         </div>
 
-        {/* 👇 NOVO CAMPO DE IMAGEM */}
         <div>
           <label className={labelClass}>URL da Imagem (Opcional)</label>
           <div className="relative">
@@ -122,9 +150,23 @@ export default function ItemForm({ aoCriar, pastaId }) {
           <textarea name="descricao" value={dados.descricao} onChange={handleChange} className={`${inputClass} h-24 resize-none`} placeholder="Detalhes do item..." />
         </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2">
-          {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> Salvar no Arsenal</>}
-        </button>
+        <div className="flex gap-3 pt-2">
+          <button 
+            type="button" 
+            onClick={aoCancelar}
+            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded transition-all flex justify-center items-center gap-2"
+          >
+            <X size={18}/> Cancelar
+          </button>
+          
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="flex-[2] bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition-all flex justify-center items-center gap-2"
+          >
+            {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> {itemParaEditar ? 'Salvar Mudanças' : 'Salvar no Arsenal'}</>}
+          </button>
+        </div>
 
       </form>
     </div>
