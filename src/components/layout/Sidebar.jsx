@@ -6,7 +6,7 @@ export default function Sidebar({ categoriaAtiva, setCategoriaAtiva }) {
     { id: 'CRIATURA', label: 'Bestiário', icon: Home },
     { id: 'ITEM', label: 'Arsenal', icon: Sword },
     { id: 'MAGIA', label: 'Grimório', icon: BookOpen }, // Novo
-    { id: 'NPC', label: 'NPCs', icon: Users }, // (Deixa comentado para o próximo passo)
+    { id: 'NPC', label: 'População', icon: Users }, // (Deixa comentado para o próximo passo)
   ];
 
   return (
