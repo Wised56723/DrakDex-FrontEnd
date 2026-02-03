@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react'; // Adicionado useContext
+import { useState, useEffect, useContext } from 'react';
 import { api } from '../services/api';
-import { AuthContext } from '../contexts/AuthContext'; // Importar AuthContext
+import { AuthContext } from '../contexts/AuthContext'; // Importante!
 import { Plus, ArrowLeft, FolderPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,8 +22,8 @@ import NpcForm from '../components/forms/NpcForm';
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal';
 
 export default function Dashboard() {
-  // Contexto de Autenticação
-  const { user, logout } = useContext(AuthContext); // Pegando dados do utilizador
+  // Contexto de Autenticação (Corrige o erro de user undefined)
+  const { user, logout } = useContext(AuthContext); 
 
   // Estados Globais
   const [categoria, setCategoria] = useState('CRIATURA'); 
@@ -51,11 +51,12 @@ export default function Dashboard() {
         const res = await api.get(`/api/pastas/${pastaAtual.id}`);
         setPastaAtual(res.data);
       } else {
-        const res = await api.get('/api/pastas/me', { params: { categoria } });
+        const res = await api.get('/api/pastas/meus-bestiarios', { params: { tipo: categoria } });
         setPastas(res.data);
       }
     } catch (error) {
-      toast.error("Erro ao carregar dados.");
+      console.error(error);
+      // toast.error("Erro ao carregar dados."); // Opcional
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,17 @@ export default function Dashboard() {
     carregarDados();
   }, [pastaAtual?.id]); 
 
-  // --- HANDLERS DE AÇÃO ---
+  // --- LOGICA DE BREADCRUMBS (Caminho do Pão) ---
+  const caminhoPao = [
+    { id: 'root', nome: 'Início' },
+    ...(pastaAtual ? [{ id: pastaAtual.id, nome: pastaAtual.nome }] : [])
+  ];
+
+  const handleVoltarPasta = (index) => {
+    if (index === 0) setPastaAtual(null);
+  };
+
+  // --- HANDLERS ---
   const handleCriarSucesso = () => {
     setShowPastaForm(false);
     setShowCriaturaForm(false);
@@ -84,17 +95,6 @@ export default function Dashboard() {
   const confirmarDelecao = (e, url, nome, tipo) => {
     e.stopPropagation();
     setDeleteModal({ show: true, url, nome, tipo });
-  };
-
-  // --- LÓGICA DE BREADCRUMBS (Caminho do Pão) ---
-  const caminhoPao = [
-    { id: 'root', nome: 'Início' },
-    ...(pastaAtual ? [{ id: pastaAtual.id, nome: pastaAtual.nome }] : [])
-  ];
-
-  const handleVoltarPasta = (index) => {
-    if (index === 0) setPastaAtual(null);
-    // Futuramente, se tivermos subpastas de subpastas, a lógica seria mais complexa aqui
   };
 
   // --- RENDERIZAÇÃO CONDICIONAL ---
@@ -112,22 +112,14 @@ export default function Dashboard() {
     ));
 
     let conteudoRender = null;
-    const itemsParaFiltrar = {
-      'CRIATURA': pastaAtual.criaturas,
-      'ITEM': pastaAtual.itens,
-      'MAGIA': pastaAtual.magias,
-      'NPC': pastaAtual.npcs
-    };
-
-    const listaAtual = itemsParaFiltrar[categoria] || [];
     
-    // Filtragem simples por busca
-    const listaFiltrada = listaAtual.filter(item => 
+    // Filtro de busca simples no frontend
+    const filtrar = (lista) => lista?.filter(item => 
       !termoBusca || item.nome.toLowerCase().includes(termoBusca.toLowerCase())
-    );
+    ) || [];
 
     if (categoria === 'CRIATURA') {
-      conteudoRender = listaFiltrada.map(c => (
+      conteudoRender = filtrar(pastaAtual.criaturas).map(c => (
         <CriaturaCard 
           key={c.id} 
           criatura={c} 
@@ -137,7 +129,7 @@ export default function Dashboard() {
         />
       ));
     } else if (categoria === 'ITEM') {
-      conteudoRender = listaFiltrada.map(i => (
+      conteudoRender = filtrar(pastaAtual.itens).map(i => (
         <ItemCard 
           key={i.id} 
           item={i} 
@@ -147,7 +139,7 @@ export default function Dashboard() {
         />
       ));
     } else if (categoria === 'MAGIA') {
-      conteudoRender = listaFiltrada.map(m => (
+      conteudoRender = filtrar(pastaAtual.magias).map(m => (
         <MagiaCard 
           key={m.id} 
           magia={m} 
@@ -157,7 +149,7 @@ export default function Dashboard() {
         />
       ));
     } else if (categoria === 'NPC') {
-      conteudoRender = listaFiltrada.map(n => (
+      conteudoRender = filtrar(pastaAtual.npcs).map(n => (
         <NpcCard 
           key={n.id} 
           npc={n} 
@@ -197,12 +189,12 @@ export default function Dashboard() {
       <Sidebar categoriaAtiva={categoria} setCategoriaAtiva={setCategoria} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER CORRIGIDO */}
+        {/* HEADER CONECTADO CORRETAMENTE */}
         <Header 
           categoria={categoria}
           caminhoPao={caminhoPao}
           voltarPasta={handleVoltarPasta}
-          abrirMenu={() => {}} // Placeholder para menu mobile
+          abrirMenu={() => {}} 
           authenticated={!!user}
           user={user}
           logout={logout}
@@ -212,7 +204,6 @@ export default function Dashboard() {
 
         <main className="flex-1 overflow-y-auto p-8 relative scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-transparent">
           
-          {/* Título da Seção (Breadcrumbs duplicado removido pois agora está no Header, mas mantemos o título grande) */}
           <div className="flex items-center gap-4 mb-8">
              {pastaAtual && (
               <button 
@@ -287,16 +278,12 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* --- MODAIS (MANTIVE IGUAL) --- */}
+      {/* MODAL DE DELEÇÃO */}
       {deleteModal.show && (
         <DeleteConfirmationModal 
-          isOpen={deleteModal.show} // Corrigido nome da prop de 'isOpen' para o que o modal espera? O teu modal usa 'item' para verificar, mas aqui está a usar isOpen no wrapper, ok.
-          // Nota: O teu DeleteConfirmationModal usa: if (!item) return null;
-          // Então precisamos passar 'item' corretamente:
           item={{ nome: deleteModal.nome, tipo: deleteModal.tipo }} 
           aoCancelar={() => setDeleteModal({ show: false, url: '', nome: '', tipo: '' })}
           aoConfirmar={async () => {
-             // Lógica de deleção real aqui (usando a URL do modal)
              try {
                 await api.delete(deleteModal.url);
                 toast.success("Item apagado!");
@@ -309,8 +296,8 @@ export default function Dashboard() {
         />
       )}
       
-      {/* ... Resto dos modais (PastaForm, CriaturaForm, etc) mantidos iguais ao teu código original ... */}
-       {showPastaForm && (
+      {/* MODAL PASTA */}
+      {showPastaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <PastaForm 
             aoCriar={handleCriarSucesso} 
@@ -321,6 +308,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* MODAL CRIATURA */}
       {showCriaturaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -334,6 +322,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* MODAL ITEM */}
       {showItemForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -347,6 +336,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* MODAL MAGIA */}
       {showMagiaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -360,6 +350,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* MODAL NPC */}
       {showNpcForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl">

@@ -1,18 +1,19 @@
 import { Menu, FolderOpen, Backpack, ChevronRight, LogOut, LogIn, Search, X } from 'lucide-react';
 
 export default function Header({ 
-  abaAtiva, 
-  caminhoPao, 
+  categoria, 
+  caminhoPao = [], // Valor padrão para evitar erro
   voltarPasta, 
   abrirMenu, 
   authenticated, 
   user, 
   logout, 
   abrirLogin,
-  termoBusca,       // <--- NOVO
-  setTermoBusca     // <--- NOVO
+  termoBusca,       
+  setTermoBusca     
 }) {
   
+  // CORREÇÃO: Usamos comparação direta em vez de .includes()
   const isArsenal = categoria === 'ITEM';
 
   return (
@@ -28,13 +29,13 @@ export default function Header({
           {isArsenal ? <Backpack size={18} className="text-rose-500"/> : <FolderOpen size={18} className="text-rose-500"/>}
         </div>
         
-        {/* Breadcrumbs (Escondemos em telas muito pequenas se houver busca) */}
+        {/* Breadcrumbs (Caminho do Pão) */}
         <div className={`flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 no-scrollbar mask-gradient ${termoBusca ? 'hidden md:flex' : 'flex'}`}>
           {caminhoPao.map((passo, index) => (
             <div key={passo.id || 'root'} className="flex items-center gap-2">
               {index > 0 && <ChevronRight size={14} className="shrink-0" />}
               <button 
-                onClick={() => voltarPasta(index)} 
+                onClick={() => voltarPasta && voltarPasta(index)} 
                 className={`hover:text-white ${index === caminhoPao.length - 1 ? 'text-rose-500 font-bold' : ''}`}
               >
                 {passo.nome}
@@ -44,15 +45,15 @@ export default function Header({
         </div>
       </div>
 
-      {/* CENTRO: BARRA DE BUSCA (NOVO) */}
-      {authenticated && !abaAtiva.includes('criar') && (
+      {/* CENTRO: BARRA DE BUSCA */}
+      {authenticated && (
         <div className="flex-1 max-w-md relative group">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search size={16} className="text-slate-500 group-focus-within:text-rose-500 transition-colors"/>
           </div>
           <input
             type="text"
-            value={termoBusca}
+            value={termoBusca || ''}
             onChange={(e) => setTermoBusca(e.target.value)}
             placeholder={`Buscar em ${isArsenal ? 'Itens' : 'Monstros'}...`}
             className="block w-full pl-10 pr-10 bg-slate-900 border border-slate-700 rounded-full py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all"
