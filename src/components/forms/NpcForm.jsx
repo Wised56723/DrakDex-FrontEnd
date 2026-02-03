@@ -8,15 +8,15 @@ import {
 
 export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar }) {
   const [loading, setLoading] = useState(false);
-  const [abaAtiva, setAbaAtiva] = useState('GERAL'); // GERAL, COMBATE, INVENTARIO
+  const [abaAtiva, setAbaAtiva] = useState('GERAL'); 
   
-  // Listas para seleção (carregadas do backend)
   const [todosItens, setTodosItens] = useState([]);
   const [todasMagias, setTodasMagias] = useState([]);
 
+  // ESTADO INICIAL SEGURO
   const [dados, setDados] = useState({
     nome: '',
-    tipoFicha: 'DND5E', // Default
+    tipoFicha: 'DND5E',
     aparencia: '',
     personalidade: '',
     historia: '',
@@ -35,38 +35,33 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
     // Livre
     regrasCustomizadas: '',
 
-    // Relacionamentos (IDs)
+    // Relacionamentos (Inicializados como arrays vazios)
     equipamentosIds: [],
     magiasIds: []
   });
 
-  // 1. Carregar dados iniciais e listas de seleção
   useEffect(() => {
     carregarRecursos();
     
     if (npcParaEditar) {
       setDados({
         ...npcParaEditar,
-        // Garante que as listas sejam arrays de IDs para o formulário
+        // Garante que não seja undefined/null
         equipamentosIds: npcParaEditar.equipamentos?.map(i => i.id) || [],
         magiasIds: npcParaEditar.magiasConhecidas?.map(m => m.id) || []
       });
     }
   }, [npcParaEditar]);
 
-  // Busca todos os itens e magias do usuário para ele poder escolher
   const carregarRecursos = async () => {
     try {
-      // Busca pastas de itens
       const resItens = await api.get('/api/pastas/me', { params: { categoria: 'ITEM' } });
       const itensFlat = resItens.data.flatMap(pasta => pasta.itens || []);
       setTodosItens(itensFlat);
 
-      // Busca pastas de magias
       const resMagias = await api.get('/api/pastas/me', { params: { categoria: 'MAGIA' } });
       const magiasFlat = resMagias.data.flatMap(pasta => pasta.magias || []);
       setTodasMagias(magiasFlat);
-
     } catch (error) {
       console.error("Erro ao carregar recursos", error);
     }
@@ -80,10 +75,10 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
     }));
   };
 
-  // Toggle para seleção múltipla (Itens/Magias)
   const toggleSelection = (id, field) => {
     setDados(prev => {
-      const list = prev[field];
+      // Proteção: Garante que list é um array, senão usa []
+      const list = prev[field] || [];
       if (list.includes(id)) {
         return { ...prev, [field]: list.filter(item => item !== id) };
       } else {
@@ -113,7 +108,6 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
     }
   };
 
-  // Estilos
   const inputClass = "w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-yellow-500 outline-none placeholder-slate-600";
   const labelClass = "block text-xs font-bold text-yellow-500/80 mb-1 uppercase tracking-wider";
   const tabClass = (tab) => `flex-1 py-2 text-sm font-bold border-b-2 transition-colors ${abaAtiva === tab ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' : 'border-transparent text-slate-500 hover:text-slate-300'}`;
@@ -128,8 +122,8 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
           <User className="text-yellow-500" /> {npcParaEditar ? 'Editar NPC' : 'Criar NPC'}
         </h2>
         <div className="bg-slate-900 p-1 rounded-lg flex text-xs">
-          <button onClick={() => setDados({...dados, tipoFicha: 'DND5E'})} className={`px-3 py-1 rounded ${dados.tipoFicha === 'DND5E' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>D&D 5e</button>
-          <button onClick={() => setDados({...dados, tipoFicha: 'LIVRE'})} className={`px-3 py-1 rounded ${dados.tipoFicha === 'LIVRE' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>Livre</button>
+          <button type="button" onClick={() => setDados({...dados, tipoFicha: 'DND5E'})} className={`px-3 py-1 rounded ${dados.tipoFicha === 'DND5E' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>D&D 5e</button>
+          <button type="button" onClick={() => setDados({...dados, tipoFicha: 'LIVRE'})} className={`px-3 py-1 rounded ${dados.tipoFicha === 'LIVRE' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>Livre</button>
         </div>
       </div>
 
@@ -169,7 +163,6 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
                 </div>
               </div>
               
-              {/* Se for LIVRE, a caixa de texto grande aparece aqui */}
               {dados.tipoFicha === 'LIVRE' && (
                 <div>
                   <label className={labelClass}>Regras / Stats Customizados</label>
@@ -203,13 +196,7 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
                   {['forca', 'destreza', 'constituicao', 'inteligencia', 'sabedoria', 'carisma'].map(attr => (
                     <div key={attr} className="text-center">
                       <span className="text-[10px] text-slate-500 uppercase">{attr.substring(0,3)}</span>
-                      <input 
-                        type="number" 
-                        name={attr} 
-                        value={dados[attr]} 
-                        onChange={handleChange} 
-                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center text-white focus:border-yellow-500" 
-                      />
+                      <input type="number" name={attr} value={dados[attr]} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center text-white focus:border-yellow-500" />
                     </div>
                   ))}
                 </div>
@@ -234,10 +221,11 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
                       <div 
                         key={item.id} 
                         onClick={() => toggleSelection(item.id, 'equipamentosIds')}
-                        className={itemSelectClass(dados.equipamentosIds.includes(item.id))}
+                        // PROTEÇÃO AQUI: ?.includes
+                        className={itemSelectClass(dados.equipamentosIds?.includes(item.id))}
                       >
                         <span className="truncate">{item.nome}</span>
-                        {dados.equipamentosIds.includes(item.id) && <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>}
+                        {dados.equipamentosIds?.includes(item.id) && <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>}
                       </div>
                     ))}
                   </div>
@@ -257,10 +245,11 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
                       <div 
                         key={magia.id} 
                         onClick={() => toggleSelection(magia.id, 'magiasIds')}
-                        className={itemSelectClass(dados.magiasIds.includes(magia.id))}
+                        // PROTEÇÃO AQUI: ?.includes
+                        className={itemSelectClass(dados.magiasIds?.includes(magia.id))}
                       >
                         <span className="truncate">{magia.nome}</span>
-                        {dados.magiasIds.includes(magia.id) && <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>}
+                        {dados.magiasIds?.includes(magia.id) && <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>}
                       </div>
                     ))}
                   </div>
@@ -270,7 +259,7 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
               <div className="bg-slate-900/50 p-3 rounded border border-slate-800 flex gap-2 items-start">
                 <AlertCircle size={16} className="text-slate-500 mt-0.5 shrink-0"/>
                 <p className="text-xs text-slate-500">
-                  Itens e Magias selecionados aqui aparecerão linkados na ficha do NPC. Se você editar o Item original no Arsenal, o NPC será atualizado automaticamente.
+                  Itens e Magias selecionados aqui aparecerão linkados na ficha do NPC.
                 </p>
               </div>
 
@@ -279,21 +268,12 @@ export default function NpcForm({ aoCriar, pastaId, npcParaEditar, aoCancelar })
 
         </div>
 
-        {/* Footer com Botões */}
+        {/* Footer */}
         <div className="flex gap-3 pt-4 border-t border-slate-800 mt-4 px-4 md:px-0">
-          <button 
-            type="button" 
-            onClick={aoCancelar}
-            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2"
-          >
+          <button type="button" onClick={aoCancelar} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2">
             <X size={18}/> Cancelar
           </button>
-          
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="flex-[2] bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg shadow-yellow-900/20"
-          >
+          <button type="submit" disabled={loading} className="flex-[2] bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg shadow-yellow-900/20">
             {loading ? <Loader2 className="animate-spin"/> : <><Save size={18}/> {npcParaEditar ? 'Salvar NPC' : 'Criar NPC'}</>}
           </button>
         </div>
