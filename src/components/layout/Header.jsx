@@ -13,7 +13,7 @@ export default function Header({
   setTermoBusca     // <--- NOVO
 }) {
   
-  const isArsenal = abaAtiva.includes('arsenal');
+  const isArsenal = categoria === 'ITEM';
 
   return (
     <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 bg-slate-950/50 backdrop-blur shrink-0 gap-4">

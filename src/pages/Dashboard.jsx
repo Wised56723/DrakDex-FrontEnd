@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react'; // Adicionado useContext
 import { api } from '../services/api';
+import { AuthContext } from '../contexts/AuthContext'; // Importar AuthContext
 import { Plus, ArrowLeft, FolderPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -9,22 +10,25 @@ import Header from '../components/layout/Header';
 import PastaCard from '../components/cards/PastaCard';
 import CriaturaCard from '../components/cards/CriaturaCard';
 import ItemCard from '../components/cards/ItemCard';
-import MagiaCard from '../components/cards/MagiaCard'; // NOVO
-import NpcCard from '../components/cards/NpcCard'; // NOVO
+import MagiaCard from '../components/cards/MagiaCard'; 
+import NpcCard from '../components/cards/NpcCard'; 
 
 // Forms e Modals
 import PastaForm from '../components/forms/PastaForm';
 import CriaturaForm from '../components/forms/CriaturaForm';
 import ItemForm from '../components/forms/ItemForm';
-import MagiaForm from '../components/forms/MagiaForm'; // NOVO
-import NpcForm from '../components/forms/NpcForm'; // NOVO
+import MagiaForm from '../components/forms/MagiaForm'; 
+import NpcForm from '../components/forms/NpcForm'; 
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal';
 
 export default function Dashboard() {
+  // Contexto de Autenticação
+  const { user, logout } = useContext(AuthContext); // Pegando dados do utilizador
+
   // Estados Globais
-  const [categoria, setCategoria] = useState('CRIATURA'); // CRIATURA, ITEM, MAGIA
+  const [categoria, setCategoria] = useState('CRIATURA'); 
   const [pastas, setPastas] = useState([]);
-  const [pastaAtual, setPastaAtual] = useState(null); // Se null, estamos na raiz
+  const [pastaAtual, setPastaAtual] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [termoBusca, setTermoBusca] = useState('');
 
@@ -32,8 +36,8 @@ export default function Dashboard() {
   const [showPastaForm, setShowPastaForm] = useState(false);
   const [showCriaturaForm, setShowCriaturaForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [showMagiaForm, setShowMagiaForm] = useState(false); // NOVO
-  const [showNpcForm, setShowNpcForm] = useState(false); // NOVO
+  const [showMagiaForm, setShowMagiaForm] = useState(false); 
+  const [showNpcForm, setShowNpcForm] = useState(false); 
   
   // Estados de Edição/Deleção
   const [itemParaEditar, setItemParaEditar] = useState(null);
@@ -44,11 +48,9 @@ export default function Dashboard() {
     setLoading(true);
     try {
       if (pastaAtual) {
-        // Se estamos dentro de uma pasta, busca o conteúdo dela atualizado
         const res = await api.get(`/api/pastas/${pastaAtual.id}`);
         setPastaAtual(res.data);
       } else {
-        // Se estamos na raiz, busca as pastas da categoria atual
         const res = await api.get('/api/pastas/me', { params: { categoria } });
         setPastas(res.data);
       }
@@ -60,24 +62,23 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    setPastaAtual(null); // Reseta para raiz ao trocar categoria
+    setPastaAtual(null); 
     carregarDados();
   }, [categoria]);
 
   useEffect(() => {
     carregarDados();
-  }, [pastaAtual?.id]); // Recarrega se a pasta mudar
+  }, [pastaAtual?.id]); 
 
   // --- HANDLERS DE AÇÃO ---
-
   const handleCriarSucesso = () => {
     setShowPastaForm(false);
     setShowCriaturaForm(false);
     setShowItemForm(false);
     setShowMagiaForm(false);
-    setShowNpcForm(false); // NOVO
+    setShowNpcForm(false);
     setItemParaEditar(null);
-    carregarDados(); // Recarrega a lista
+    carregarDados(); 
   };
 
   const confirmarDelecao = (e, url, nome, tipo) => {
@@ -85,27 +86,48 @@ export default function Dashboard() {
     setDeleteModal({ show: true, url, nome, tipo });
   };
 
-  // --- RENDERIZAÇÃO CONDICIONAL ---
+  // --- LÓGICA DE BREADCRUMBS (Caminho do Pão) ---
+  const caminhoPao = [
+    { id: 'root', nome: 'Início' },
+    ...(pastaAtual ? [{ id: pastaAtual.id, nome: pastaAtual.nome }] : [])
+  ];
 
+  const handleVoltarPasta = (index) => {
+    if (index === 0) setPastaAtual(null);
+    // Futuramente, se tivermos subpastas de subpastas, a lógica seria mais complexa aqui
+  };
+
+  // --- RENDERIZAÇÃO CONDICIONAL ---
   const renderConteudoPasta = () => {
     if (!pastaAtual) return null;
 
-    // 1. Renderiza Subpastas
     const subpastasRender = pastaAtual.subPastas?.map(pasta => (
       <PastaCard 
         key={pasta.id} 
         pasta={pasta} 
         aoClicar={() => setPastaAtual(pasta)}
         aoDeletar={confirmarDelecao}
-        aoEditar={() => { /* Implementar edição de pasta se quiser */ }}
+        aoEditar={() => {}}
       />
     ));
 
-    // 2. Renderiza Conteúdo Baseado na Categoria
     let conteudoRender = null;
+    const itemsParaFiltrar = {
+      'CRIATURA': pastaAtual.criaturas,
+      'ITEM': pastaAtual.itens,
+      'MAGIA': pastaAtual.magias,
+      'NPC': pastaAtual.npcs
+    };
+
+    const listaAtual = itemsParaFiltrar[categoria] || [];
+    
+    // Filtragem simples por busca
+    const listaFiltrada = listaAtual.filter(item => 
+      !termoBusca || item.nome.toLowerCase().includes(termoBusca.toLowerCase())
+    );
 
     if (categoria === 'CRIATURA') {
-      conteudoRender = pastaAtual.criaturas?.map(c => (
+      conteudoRender = listaFiltrada.map(c => (
         <CriaturaCard 
           key={c.id} 
           criatura={c} 
@@ -115,7 +137,7 @@ export default function Dashboard() {
         />
       ));
     } else if (categoria === 'ITEM') {
-      conteudoRender = pastaAtual.itens?.map(i => (
+      conteudoRender = listaFiltrada.map(i => (
         <ItemCard 
           key={i.id} 
           item={i} 
@@ -124,8 +146,8 @@ export default function Dashboard() {
           podeEditar={true}
         />
       ));
-    } else if (categoria === 'MAGIA') { // NOVO BLOCO
-      conteudoRender = pastaAtual.magias?.map(m => (
+    } else if (categoria === 'MAGIA') {
+      conteudoRender = listaFiltrada.map(m => (
         <MagiaCard 
           key={m.id} 
           magia={m} 
@@ -134,8 +156,8 @@ export default function Dashboard() {
           podeEditar={true}
         />
       ));
-    } else if (categoria === 'NPC') { // NOVO BLOCO
-      conteudoRender = pastaAtual.npcs?.map(n => (
+    } else if (categoria === 'NPC') {
+      conteudoRender = listaFiltrada.map(n => (
         <NpcCard 
           key={n.id} 
           npc={n} 
@@ -163,12 +185,11 @@ export default function Dashboard() {
     );
   };
 
-  // --- BOTÃO NOVO (Lógica Dinâmica) ---
   const abrirFormularioNovo = () => {
     if (categoria === 'CRIATURA') setShowCriaturaForm(true);
     if (categoria === 'ITEM') setShowItemForm(true);
-    if (categoria === 'MAGIA') setShowMagiaForm(true); // NOVO
-    if (categoria === 'NPC') setShowNpcForm(true); // NOVO
+    if (categoria === 'MAGIA') setShowMagiaForm(true); 
+    if (categoria === 'NPC') setShowNpcForm(true); 
   };
 
   return (
@@ -176,26 +197,36 @@ export default function Dashboard() {
       <Sidebar categoriaAtiva={categoria} setCategoriaAtiva={setCategoria} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header termoBusca={termoBusca} setTermoBusca={setTermoBusca} />
+        {/* HEADER CORRIGIDO */}
+        <Header 
+          categoria={categoria}
+          caminhoPao={caminhoPao}
+          voltarPasta={handleVoltarPasta}
+          abrirMenu={() => {}} // Placeholder para menu mobile
+          authenticated={!!user}
+          user={user}
+          logout={logout}
+          termoBusca={termoBusca}
+          setTermoBusca={setTermoBusca}
+        />
 
         <main className="flex-1 overflow-y-auto p-8 relative scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-transparent">
           
-          {/* Breadcrumbs / Navegação */}
+          {/* Título da Seção (Breadcrumbs duplicado removido pois agora está no Header, mas mantemos o título grande) */}
           <div className="flex items-center gap-4 mb-8">
-            {pastaAtual ? (
+             {pastaAtual && (
               <button 
-                onClick={() => setPastaAtual(pastaAtual.pastaPaiId ? { id: pastaAtual.pastaPaiId } : null)} // Lógica simplificada de voltar
+                onClick={() => setPastaAtual(pastaAtual.pastaPaiId ? { id: pastaAtual.pastaPaiId } : null)} 
                 className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
               >
                 <ArrowLeft size={20} /> Voltar
               </button>
-            ) : null}
+            )}
             
             <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
               {pastaAtual ? pastaAtual.nome : 
                 categoria === 'MAGIA' ? 'Meus Grimórios' : 
                 categoria === 'ITEM' ? 'Meus Arsenais' : categoria === 'NPC' ? 'Minha População' : 'Meus Bestiários'
-                
               }
             </h2>
           </div>
@@ -206,7 +237,6 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              {/* VISÃO RAIZ (Listagem de Pastas) */}
               {!pastaAtual && (
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {pastas.map(pasta => (
@@ -215,11 +245,10 @@ export default function Dashboard() {
                       pasta={pasta} 
                       aoClicar={() => setPastaAtual(pasta)}
                       aoDeletar={confirmarDelecao}
-                      aoEditar={() => { /* ... */ }}
+                      aoEditar={() => {}}
                     />
                   ))}
                   
-                  {/* Card de Adicionar Pasta */}
                   <button 
                     onClick={() => setShowPastaForm(true)}
                     className="border-2 border-dashed border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center gap-3 text-slate-500 hover:border-purple-500 hover:text-purple-400 transition-all group h-full min-h-[160px]"
@@ -232,12 +261,10 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* VISÃO INTERNA (Conteúdo) */}
               {pastaAtual && renderConteudoPasta()}
             </>
           )}
 
-          {/* FLOAT BUTTON (Só aparece dentro de pasta) */}
           {pastaAtual && (
             <div className="fixed bottom-8 right-8 flex flex-col gap-3">
               <button 
@@ -260,22 +287,30 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* --- MODAIS --- */}
-
-      {/* Modal Deletar */}
+      {/* --- MODAIS (MANTIVE IGUAL) --- */}
       {deleteModal.show && (
         <DeleteConfirmationModal 
-          isOpen={deleteModal.show}
-          onClose={() => setDeleteModal({ show: false, url: '', nome: '', tipo: '' })}
-          onConfirm={handleCriarSucesso}
-          url={deleteModal.url}
-          itemName={deleteModal.nome}
-          itemType={deleteModal.tipo}
+          isOpen={deleteModal.show} // Corrigido nome da prop de 'isOpen' para o que o modal espera? O teu modal usa 'item' para verificar, mas aqui está a usar isOpen no wrapper, ok.
+          // Nota: O teu DeleteConfirmationModal usa: if (!item) return null;
+          // Então precisamos passar 'item' corretamente:
+          item={{ nome: deleteModal.nome, tipo: deleteModal.tipo }} 
+          aoCancelar={() => setDeleteModal({ show: false, url: '', nome: '', tipo: '' })}
+          aoConfirmar={async () => {
+             // Lógica de deleção real aqui (usando a URL do modal)
+             try {
+                await api.delete(deleteModal.url);
+                toast.success("Item apagado!");
+                setDeleteModal({ show: false, url: '', nome: '', tipo: '' });
+                carregarDados();
+             } catch(e) {
+                toast.error("Erro ao apagar.");
+             }
+          }}
         />
       )}
-
-      {/* Modal Pasta */}
-      {showPastaForm && (
+      
+      {/* ... Resto dos modais (PastaForm, CriaturaForm, etc) mantidos iguais ao teu código original ... */}
+       {showPastaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <PastaForm 
             aoCriar={handleCriarSucesso} 
@@ -286,7 +321,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Modal Criatura */}
       {showCriaturaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -300,7 +334,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Modal Item */}
       {showItemForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -314,7 +347,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Modal Magia (NOVO) */}
       {showMagiaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -328,7 +360,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Modal NPC (NOVO - Coloque antes do fechamento da div principal) */}
       {showNpcForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl">
