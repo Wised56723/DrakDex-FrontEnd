@@ -1,58 +1,52 @@
-import { LayoutDashboard, FolderOpen, Globe, Backpack, X } from 'lucide-react';
+import { Home, Sword, Scroll, BookOpen, Users } from 'lucide-react';
 
-export default function Sidebar({ 
-  abaAtiva, 
-  navegar, 
-  menuAberto, 
-  fecharMenu, 
-  authenticated, 
-  abrirLogin 
-}) {
+export default function Sidebar({ categoriaAtiva, setCategoriaAtiva }) {
   
-  // Helper para estilizar botões
-  const btnClass = (nomeAba) => `flex items-center gap-3 p-3 rounded-lg transition-colors ${abaAtiva === nomeAba ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`;
+  const menuItems = [
+    { id: 'CRIATURA', label: 'Bestiário', icon: Home },
+    { id: 'ITEM', label: 'Arsenal', icon: Sword },
+    { id: 'MAGIA', label: 'Grimório', icon: BookOpen }, // Novo
+    { id: 'NPC', label: 'NPCs', icon: Users }, // (Deixa comentado para o próximo passo)
+  ];
 
   return (
-    <aside className={`
-      fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col p-6 transition-transform duration-300 ease-in-out
-      ${menuAberto ? 'translate-x-0' : '-translate-x-full'} 
-      md:translate-x-0 md:static md:inset-auto
-    `}>
-      <div className="flex justify-between items-center mb-8">
-        <div className="text-2xl font-bold text-rose-600 flex items-center gap-2">
-          <LayoutDashboard size={28} /> DrakDex
+    <aside className="w-64 bg-slate-950 border-r border-slate-900 flex flex-col">
+      <div className="p-6 border-b border-slate-900 flex items-center gap-3">
+        <div className="bg-purple-600 p-2 rounded-lg shadow-lg shadow-purple-900/50">
+          <Scroll className="text-white" size={24} />
         </div>
-        
-        {/* Botão fechar (Mobile) */}
-        <button onClick={fecharMenu} className="md:hidden text-slate-400 hover:text-white">
-          <X size={24} />
-        </button>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+          DrakDex
+        </h1>
       </div>
-      
-      <nav className="flex flex-col gap-2 flex-1 overflow-y-auto">
-        
-        {/* SEÇÃO BESTIÁRIO */}
-        <p className="text-xs font-bold text-slate-500 uppercase mt-2 mb-1">Bestiário</p>
-        <button onClick={() => navegar('meu_bestiario')} className={btnClass('meu_bestiario')}>
-          <FolderOpen size={20} /> Meus Monstros
-        </button>
-        <button onClick={() => navegar('publico_bestiario')} className={btnClass('publico_bestiario')}>
-          <Globe size={20} /> Público
-        </button>
 
-        {/* SEÇÃO ARSENAL */}
-        <p className="text-xs font-bold text-slate-500 uppercase mt-6 mb-1">Arsenal</p>
-        <button 
-          onClick={() => authenticated ? navegar('meu_arsenal') : abrirLogin()} 
-          className={btnClass('meu_arsenal')}
-        >
-          <Backpack size={20} /> Meus Itens
-        </button>
-        <button onClick={() => navegar('publico_arsenal')} className={btnClass('publico_arsenal')}>
-          <Globe size={20} /> Arsenal Público
-        </button>
-
+      <nav className="flex-1 p-4 space-y-2">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const ativo = categoriaAtiva === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => setCategoriaAtiva(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${
+                ativo 
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30' 
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-purple-400'
+              }`}
+            >
+              <Icon size={20} />
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
+
+      <div className="p-4 border-t border-slate-900">
+        <div className="bg-slate-900/50 rounded-xl p-4 text-center">
+          <p className="text-xs text-slate-500">Versão Beta 0.3</p>
+        </div>
+      </div>
     </aside>
   );
 }
