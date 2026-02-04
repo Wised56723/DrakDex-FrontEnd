@@ -1,12 +1,13 @@
 import { useState, useEffect, useContext } from 'react';
 import { api } from '../services/api';
-import { AuthContext } from '../contexts/AuthContext'; // Importante!
+import { AuthContext } from '../contexts/AuthContext';
 import { Plus, ArrowLeft, FolderPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Componentes
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
+import AuthModal from '../components/AuthModal'; // IMPORTADO AQUI
 import PastaCard from '../components/cards/PastaCard';
 import CriaturaCard from '../components/cards/CriaturaCard';
 import ItemCard from '../components/cards/ItemCard';
@@ -22,7 +23,6 @@ import NpcForm from '../components/forms/NpcForm';
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal';
 
 export default function Dashboard() {
-  // Contexto de Autenticação (Corrige o erro de user undefined)
   const { user, logout } = useContext(AuthContext); 
 
   // Estados Globais
@@ -33,17 +33,16 @@ export default function Dashboard() {
   const [termoBusca, setTermoBusca] = useState('');
 
   // Estados de Modals
+  const [showAuthModal, setShowAuthModal] = useState(false); // NOVO ESTADO
   const [showPastaForm, setShowPastaForm] = useState(false);
   const [showCriaturaForm, setShowCriaturaForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
   const [showMagiaForm, setShowMagiaForm] = useState(false); 
   const [showNpcForm, setShowNpcForm] = useState(false); 
   
-  // Estados de Edição/Deleção
   const [itemParaEditar, setItemParaEditar] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ show: false, url: '', nome: '', tipo: '' });
 
-  // --- CARREGAMENTO DE DADOS ---
   const carregarDados = async () => {
     setLoading(true);
     try {
@@ -56,7 +55,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error(error);
-      // toast.error("Erro ao carregar dados."); // Opcional
     } finally {
       setLoading(false);
     }
@@ -71,7 +69,11 @@ export default function Dashboard() {
     carregarDados();
   }, [pastaAtual?.id]); 
 
-  // --- LOGICA DE BREADCRUMBS (Caminho do Pão) ---
+  // Se o utilizador fizer login, recarrega os dados
+  useEffect(() => {
+    if (user) carregarDados();
+  }, [user]);
+
   const caminhoPao = [
     { id: 'root', nome: 'Início' },
     ...(pastaAtual ? [{ id: pastaAtual.id, nome: pastaAtual.nome }] : [])
@@ -81,7 +83,6 @@ export default function Dashboard() {
     if (index === 0) setPastaAtual(null);
   };
 
-  // --- HANDLERS ---
   const handleCriarSucesso = () => {
     setShowPastaForm(false);
     setShowCriaturaForm(false);
@@ -97,7 +98,6 @@ export default function Dashboard() {
     setDeleteModal({ show: true, url, nome, tipo });
   };
 
-  // --- RENDERIZAÇÃO CONDICIONAL ---
   const renderConteudoPasta = () => {
     if (!pastaAtual) return null;
 
@@ -112,8 +112,6 @@ export default function Dashboard() {
     ));
 
     let conteudoRender = null;
-    
-    // Filtro de busca simples no frontend
     const filtrar = (lista) => lista?.filter(item => 
       !termoBusca || item.nome.toLowerCase().includes(termoBusca.toLowerCase())
     ) || [];
@@ -189,7 +187,8 @@ export default function Dashboard() {
       <Sidebar categoriaAtiva={categoria} setCategoriaAtiva={setCategoria} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER CONECTADO CORRETAMENTE */}
+        
+        {/* HEADER ATUALIZADO COM ABRIR LOGIN */}
         <Header 
           categoria={categoria}
           caminhoPao={caminhoPao}
@@ -198,6 +197,7 @@ export default function Dashboard() {
           authenticated={!!user}
           user={user}
           logout={logout}
+          abrirLogin={() => setShowAuthModal(true)} // <-- AQUI ESTAVA O PROBLEMA
           termoBusca={termoBusca}
           setTermoBusca={setTermoBusca}
         />
@@ -278,6 +278,11 @@ export default function Dashboard() {
         </main>
       </div>
 
+      {/* MODAL AUTH */}
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} />
+      )}
+
       {/* MODAL DE DELEÇÃO */}
       {deleteModal.show && (
         <DeleteConfirmationModal 
@@ -296,7 +301,6 @@ export default function Dashboard() {
         />
       )}
       
-      {/* MODAL PASTA */}
       {showPastaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <PastaForm 
@@ -308,7 +312,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODAL CRIATURA */}
       {showCriaturaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -322,7 +325,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODAL ITEM */}
       {showItemForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -336,7 +338,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODAL MAGIA */}
       {showMagiaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -350,7 +351,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODAL NPC */}
       {showNpcForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl">
