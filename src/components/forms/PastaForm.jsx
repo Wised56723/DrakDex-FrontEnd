@@ -1,58 +1,80 @@
-import { Save, X } from 'lucide-react';
+import { useState } from 'react';
+import { api } from '../../services/api';
+import { X, FolderPlus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function PastaForm({ 
-  nome, 
-  setNome, 
-  publica, 
-  setPublica, 
-  isEdicao, 
-  categoria, 
-  aoSalvar, 
-  aoCancelar 
-}) {
+export default function PastaForm({ aoCriar, aoCancelar, categoriaAtual, pastaPaiId }) {
+  const [nome, setNome] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!nome.trim()) return;
+
+    setLoading(true);
+    try {
+      // O Payload deve corresponder ao PastaRequestDTO do Java
+      const payload = {
+        nome: nome,
+        publica: true, // Padrão como pública ou adicione um checkbox se quiser
+        categoria: categoriaAtual, // <--- IMPORTANTE: Enviar a categoria (CRIATURA, ITEM, etc.)
+        pastaPaiId: pastaPaiId || null
+      };
+
+      await api.post('/api/pastas', payload);
+      toast.success("Pasta criada com sucesso!");
+      aoCriar(); // Atualiza a lista no Dashboard
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao criar pasta. Verifique as permissões.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={aoSalvar} className="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-8 flex flex-col md:flex-row gap-4 items-end animate-in fade-in">
-      <div className="flex-1 w-full">
-        <label className="text-xs text-slate-400 block mb-1">
-          {isEdicao ? 'Renomear Pasta' : `Nova Pasta (${categoria})`}
-        </label>
-        <input 
-          value={nome} 
-          onChange={e => setNome(e.target.value)} 
-          className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-rose-500 outline-none" 
-          required 
-          autoFocus 
-        />
-      </div>
-      
-      {/* Checkbox de Pública (Só aparece ao criar, para simplificar a edição) */}
-      {!isEdicao && (
-        <div className="flex items-center gap-2 pb-3">
-          <input 
-            type="checkbox" 
-            checked={publica} 
-            onChange={e => setPublica(e.target.checked)} 
-            className="accent-rose-600 h-4 w-4" 
-          />
-          <label className="text-sm">Pública?</label>
-        </div>
-      )}
+    <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+      <button onClick={aoCancelar} className="absolute top-4 right-4 text-slate-500 hover:text-white">
+        <X size={24} />
+      </button>
 
-      <div className="flex gap-2 w-full md:w-auto">
-        <button 
-          type="button" 
-          onClick={aoCancelar} 
-          className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded transition-colors flex items-center gap-2"
-        >
-          <X size={18} /> Cancelar
-        </button>
-        <button 
-          type="submit" 
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors flex-1 md:flex-none flex items-center gap-2 justify-center"
-        >
-          <Save size={18} /> Salvar
-        </button>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-purple-500/20 p-3 rounded-full text-purple-400">
+          <FolderPlus size={24} />
+        </div>
+        <h3 className="text-xl font-bold text-white">Nova Pasta</h3>
       </div>
-    </form>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Pasta</label>
+          <input 
+            autoFocus
+            type="text" 
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder={`Ex: Dragões, Poções, NPCs...`}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-purple-500 transition-colors"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            type="button"
+            onClick={aoCancelar}
+            className="px-4 py-2 text-slate-400 hover:text-white font-medium transition-colors"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            disabled={loading || !nome.trim()}
+            className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Criar Pasta'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

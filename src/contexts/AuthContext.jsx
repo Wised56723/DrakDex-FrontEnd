@@ -8,7 +8,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    // CORREÇÃO: Usar 'drakdex_token' para combinar com o api.js
+    const token = localStorage.getItem("drakdex_token");
     const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
@@ -23,7 +24,8 @@ export function AuthProvider({ children }) {
       const response = await api.post("/auth/login", { email, senha });
       const { token, nome, vulgo } = response.data;
 
-      localStorage.setItem("token", token);
+      // CORREÇÃO: Salvar como 'drakdex_token'
+      localStorage.setItem("drakdex_token", token);
       localStorage.setItem("user", JSON.stringify({ nome, vulgo }));
       
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -42,7 +44,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    // CORREÇÃO: Remover 'drakdex_token'
+    localStorage.removeItem("drakdex_token");
     localStorage.removeItem("user");
     api.defaults.headers.common["Authorization"] = null;
     setUser(null);
