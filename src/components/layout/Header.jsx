@@ -1,8 +1,8 @@
-import { Menu, FolderOpen, Backpack, ChevronRight, LogOut, LogIn, Search, X } from 'lucide-react';
+import { Menu, FolderOpen, Backpack, ChevronRight, LogOut, LogIn, Search, X, Globe, User } from 'lucide-react';
 
 export default function Header({ 
   categoria, 
-  caminhoPao = [], // Valor padrão para evitar erro
+  caminhoPao = [], 
   voltarPasta, 
   abrirMenu, 
   authenticated, 
@@ -10,10 +10,11 @@ export default function Header({
   logout, 
   abrirLogin,
   termoBusca,       
-  setTermoBusca     
+  setTermoBusca,
+  modoPublico,      // Recebe o estado do Dashboard
+  setModoPublico    // Recebe a função para alterar
 }) {
   
-  // CORREÇÃO: Usamos comparação direta em vez de .includes()
   const isArsenal = categoria === 'ITEM';
 
   return (
@@ -29,7 +30,7 @@ export default function Header({
           {isArsenal ? <Backpack size={18} className="text-rose-500"/> : <FolderOpen size={18} className="text-rose-500"/>}
         </div>
         
-        {/* Breadcrumbs (Caminho do Pão) */}
+        {/* Breadcrumbs */}
         <div className={`flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 no-scrollbar mask-gradient ${termoBusca ? 'hidden md:flex' : 'flex'}`}>
           {caminhoPao.map((passo, index) => (
             <div key={passo.id || 'root'} className="flex items-center gap-2">
@@ -46,31 +47,47 @@ export default function Header({
       </div>
 
       {/* CENTRO: BARRA DE BUSCA */}
-      {authenticated && (
-        <div className="flex-1 max-w-md relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} className="text-slate-500 group-focus-within:text-rose-500 transition-colors"/>
-          </div>
-          <input
-            type="text"
-            value={termoBusca || ''}
-            onChange={(e) => setTermoBusca(e.target.value)}
-            placeholder={`Buscar em ${isArsenal ? 'Itens' : 'Monstros'}...`}
-            className="block w-full pl-10 pr-10 bg-slate-900 border border-slate-700 rounded-full py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all"
-          />
-          {termoBusca && (
-            <button 
-              onClick={() => setTermoBusca('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white"
-            >
-              <X size={14} />
-            </button>
-          )}
+      <div className="flex-1 max-w-md relative group mx-4 hidden sm:block">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search size={16} className="text-slate-500 group-focus-within:text-rose-500 transition-colors"/>
         </div>
-      )}
+        <input
+          type="text"
+          value={termoBusca || ''}
+          onChange={(e) => setTermoBusca(e.target.value)}
+          placeholder={`Buscar em ${isArsenal ? 'Itens' : 'Monstros'}...`}
+          className="block w-full pl-10 pr-10 bg-slate-900 border border-slate-700 rounded-full py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all"
+        />
+        {termoBusca && (
+          <button onClick={() => setTermoBusca('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white">
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
-      {/* LADO DIREITO: Usuário */}
+      {/* LADO DIREITO: Toggle Público e Usuário */}
       <div className="flex items-center gap-4 shrink-0">
+        
+        {/* Toggle Público / Privado (O ícone que faltava!) */}
+        <div className="bg-slate-900 p-1 rounded-lg border border-slate-800 flex items-center">
+          <button 
+            onClick={() => setModoPublico && setModoPublico(false)}
+            className={`p-1.5 rounded-md transition-all ${!modoPublico ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+            title="Minhas Pastas"
+          >
+            <User size={16} />
+          </button>
+          <button 
+            onClick={() => setModoPublico && setModoPublico(true)}
+            className={`p-1.5 rounded-md transition-all ${modoPublico ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+            title="Pastas Públicas"
+          >
+            <Globe size={16} />
+          </button>
+        </div>
+
+        <div className="w-px h-6 bg-slate-800 mx-1 hidden md:block"></div>
+
         {authenticated ? (
           <>
             <span className="text-sm font-bold text-white hidden md:block">{user?.vulgo}</span>

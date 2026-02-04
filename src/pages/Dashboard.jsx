@@ -1,13 +1,13 @@
 import { useState, useEffect, useContext } from 'react';
 import { api } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, ArrowLeft, FolderPlus, Loader2 } from 'lucide-react';
+import { Plus, ArrowLeft, FolderPlus, Loader2, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Componentes
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
-import AuthModal from '../components/AuthModal'; // IMPORTADO AQUI
+import AuthModal from '../components/AuthModal';
 import PastaCard from '../components/cards/PastaCard';
 import CriaturaCard from '../components/cards/CriaturaCard';
 import ItemCard from '../components/cards/ItemCard';
@@ -31,9 +31,12 @@ export default function Dashboard() {
   const [pastaAtual, setPastaAtual] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [termoBusca, setTermoBusca] = useState('');
+  
+  // NOVO ESTADO: Controla se estamos vendo pastas públicas ou privadas
+  const [modoPublico, setModoPublico] = useState(false);
 
   // Estados de Modals
-  const [showAuthModal, setShowAuthModal] = useState(false); // NOVO ESTADO
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPastaForm, setShowPastaForm] = useState(false);
   const [showCriaturaForm, setShowCriaturaForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
@@ -47,35 +50,43 @@ export default function Dashboard() {
     setLoading(true);
     try {
       if (pastaAtual) {
+        // Se estamos dentro de uma pasta, carregamos o conteúdo dela
         const res = await api.get(`/api/pastas/${pastaAtual.id}`);
         setPastaAtual(res.data);
       } else {
-        const res = await api.get('/api/pastas/meus-bestiarios', { params: { tipo: categoria } });
+        // Se estamos na raiz, verificamos o Modo Público
+        const endpoint = modoPublico 
+          ? '/api/pastas/publicas' 
+          : '/api/pastas/meus-bestiarios';
+          
+        const res = await api.get(endpoint, { params: { tipo: categoria } });
         setPastas(res.data);
       }
     } catch (error) {
       console.error(error);
+      // Se der erro 403/401, pode ser que o token expirou
+      if(error.response?.status === 403) toast.error("Acesso negado.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Recarrega sempre que mudar a categoria, modo público ou entrar/sair de pasta
   useEffect(() => {
     setPastaAtual(null); 
     carregarDados();
-  }, [categoria]);
+  }, [categoria, modoPublico]); // <-- Adicionado modoPublico
 
   useEffect(() => {
     carregarDados();
   }, [pastaAtual?.id]); 
 
-  // Se o utilizador fizer login, recarrega os dados
   useEffect(() => {
     if (user) carregarDados();
   }, [user]);
 
   const caminhoPao = [
-    { id: 'root', nome: 'Início' },
+    { id: 'root', nome: modoPublico ? 'Comunidade' : 'Início' }, // Muda o nome da raiz
     ...(pastaAtual ? [{ id: pastaAtual.id, nome: pastaAtual.nome }] : [])
   ];
 
@@ -95,6 +106,7 @@ export default function Dashboard() {
 
   const confirmarDelecao = (e, url, nome, tipo) => {
     e.stopPropagation();
+    if(modoPublico && !user) return; // Segurança extra no front
     setDeleteModal({ show: true, url, nome, tipo });
   };
 
@@ -123,7 +135,7 @@ export default function Dashboard() {
           criatura={c} 
           aoDeletar={confirmarDelecao}
           aoEditar={(item) => { setItemParaEditar(item); setShowCriaturaForm(true); }}
-          podeEditar={true}
+          podeEditar={!modoPublico} // Só edita se for minha pasta
         />
       ));
     } else if (categoria === 'ITEM') {
@@ -133,7 +145,7 @@ export default function Dashboard() {
           item={i} 
           aoDeletar={confirmarDelecao}
           aoEditar={(item) => { setItemParaEditar(item); setShowItemForm(true); }}
-          podeEditar={true}
+          podeEditar={!modoPublico}
         />
       ));
     } else if (categoria === 'MAGIA') {
@@ -143,7 +155,7 @@ export default function Dashboard() {
           magia={m} 
           aoDeletar={confirmarDelecao}
           aoEditar={(item) => { setItemParaEditar(item); setShowMagiaForm(true); }}
-          podeEditar={true}
+          podeEditar={!modoPublico}
         />
       ));
     } else if (categoria === 'NPC') {
@@ -153,7 +165,7 @@ export default function Dashboard() {
           npc={n} 
           aoDeletar={confirmarDelecao}
           aoEditar={(item) => { setItemParaEditar(item); setShowNpcForm(true); }}
-          podeEditar={true}
+          podeEditar={!modoPublico}
         />
       ));
     }
@@ -162,7 +174,7 @@ export default function Dashboard() {
       return (
         <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-50">
           <FolderPlus size={48} className="mb-4" />
-          <p>Esta pasta está vazia. Adicione algo novo!</p>
+          <p>Esta pasta está vazia.</p>
         </div>
       );
     }
@@ -188,7 +200,7 @@ export default function Dashboard() {
 
       <div className="flex-1 flex flex-col min-w-0">
         
-        {/* HEADER ATUALIZADO COM ABRIR LOGIN */}
+        {/* HEADER com os novos props */}
         <Header 
           categoria={categoria}
           caminhoPao={caminhoPao}
@@ -197,9 +209,11 @@ export default function Dashboard() {
           authenticated={!!user}
           user={user}
           logout={logout}
-          abrirLogin={() => setShowAuthModal(true)} // <-- AQUI ESTAVA O PROBLEMA
+          abrirLogin={() => setShowAuthModal(true)}
           termoBusca={termoBusca}
           setTermoBusca={setTermoBusca}
+          modoPublico={modoPublico}     // <-- Passando estado
+          setModoPublico={setModoPublico} // <-- Passando função
         />
 
         <main className="flex-1 overflow-y-auto p-8 relative scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-transparent">
@@ -214,12 +228,19 @@ export default function Dashboard() {
               </button>
             )}
             
-            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              {pastaAtual ? pastaAtual.nome : 
-                categoria === 'MAGIA' ? 'Meus Grimórios' : 
-                categoria === 'ITEM' ? 'Meus Arsenais' : categoria === 'NPC' ? 'Minha População' : 'Meus Bestiários'
-              }
-            </h2>
+            <div className="flex flex-col">
+              {modoPublico && !pastaAtual && (
+                 <span className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-1">
+                   <Globe size={12}/> Explorando Comunidade
+                 </span>
+              )}
+              <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                {pastaAtual ? pastaAtual.nome : 
+                  categoria === 'MAGIA' ? 'Grimórios' : 
+                  categoria === 'ITEM' ? 'Arsenais' : categoria === 'NPC' ? 'População' : 'Bestiários'
+                }
+              </h2>
+            </div>
           </div>
 
           {loading ? (
@@ -240,15 +261,18 @@ export default function Dashboard() {
                     />
                   ))}
                   
-                  <button 
-                    onClick={() => setShowPastaForm(true)}
-                    className="border-2 border-dashed border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center gap-3 text-slate-500 hover:border-purple-500 hover:text-purple-400 transition-all group h-full min-h-[160px]"
-                  >
-                    <div className="p-3 rounded-full bg-slate-900 group-hover:bg-purple-500/10 transition-colors">
-                      <FolderPlus size={24} />
-                    </div>
-                    <span className="font-medium">Nova Pasta</span>
-                  </button>
+                  {/* Botão de Nova Pasta (só aparece se NÃO for modo público) */}
+                  {!modoPublico && (
+                    <button 
+                      onClick={() => setShowPastaForm(true)}
+                      className="border-2 border-dashed border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center gap-3 text-slate-500 hover:border-purple-500 hover:text-purple-400 transition-all group h-full min-h-[160px]"
+                    >
+                      <div className="p-3 rounded-full bg-slate-900 group-hover:bg-purple-500/10 transition-colors">
+                        <FolderPlus size={24} />
+                      </div>
+                      <span className="font-medium">Nova Pasta</span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -256,7 +280,8 @@ export default function Dashboard() {
             </>
           )}
 
-          {pastaAtual && (
+          {/* Botões Flutuantes (Só aparecem se for MINHA pasta) */}
+          {pastaAtual && !modoPublico && (
             <div className="fixed bottom-8 right-8 flex flex-col gap-3">
               <button 
                 onClick={() => setShowPastaForm(true)}
@@ -278,12 +303,9 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* MODAL AUTH */}
-      {showAuthModal && (
-        <AuthModal onClose={() => setShowAuthModal(false)} />
-      )}
-
-      {/* MODAL DE DELEÇÃO */}
+      {/* MODAIS (MANTIDOS) */}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      
       {deleteModal.show && (
         <DeleteConfirmationModal 
           item={{ nome: deleteModal.nome, tipo: deleteModal.tipo }} 
@@ -312,6 +334,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ... Resto dos Forms (Criatura, Item, Magia, NPC) igual ao anterior ... */}
       {showCriaturaForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">

@@ -1,32 +1,42 @@
 import { useState } from 'react';
 import { api } from '../../services/api';
-import { X, FolderPlus, Loader2 } from 'lucide-react';
+import { X, FolderPlus, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PastaForm({ aoCriar, aoCancelar, categoriaAtual, pastaPaiId }) {
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
+  const [erroDetalhado, setErroDetalhado] = useState(''); // Novo estado para erro
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nome.trim()) return;
 
     setLoading(true);
+    setErroDetalhado('');
+
     try {
-      // O Payload deve corresponder ao PastaRequestDTO do Java
+      console.log("Enviando categoria:", categoriaAtual); // Debug no Console (F12)
+
       const payload = {
         nome: nome,
-        publica: true, // Padrão como pública ou adicione um checkbox se quiser
-        categoria: categoriaAtual, // <--- IMPORTANTE: Enviar a categoria (CRIATURA, ITEM, etc.)
+        publica: true, 
+        categoria: categoriaAtual, 
         pastaPaiId: pastaPaiId || null
       };
 
       await api.post('/api/pastas', payload);
       toast.success("Pasta criada com sucesso!");
-      aoCriar(); // Atualiza a lista no Dashboard
+      aoCriar(); 
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao criar pasta. Verifique as permissões.");
+      // Captura a mensagem real do Backend
+      const msgBackend = error.response?.data?.message || "Erro desconhecido.";
+      const status = error.response?.status;
+      
+      // Mostra o erro na tela para sabermos o que é
+      setErroDetalhado(`Erro ${status}: ${msgBackend}`);
+      toast.error(`Falha: ${msgBackend}`);
     } finally {
       setLoading(false);
     }
@@ -42,8 +52,19 @@ export default function PastaForm({ aoCriar, aoCancelar, categoriaAtual, pastaPa
         <div className="bg-purple-500/20 p-3 rounded-full text-purple-400">
           <FolderPlus size={24} />
         </div>
-        <h3 className="text-xl font-bold text-white">Nova Pasta</h3>
+        <div>
+          <h3 className="text-xl font-bold text-white">Nova Pasta</h3>
+          <p className="text-xs text-slate-400 uppercase font-bold">Categoria: {categoriaAtual}</p>
+        </div>
       </div>
+
+      {/* Exibição do Erro Real */}
+      {erroDetalhado && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-2 text-red-200 text-sm">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{erroDetalhado}</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -53,7 +74,7 @@ export default function PastaForm({ aoCriar, aoCancelar, categoriaAtual, pastaPa
             type="text" 
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            placeholder={`Ex: Dragões, Poções, NPCs...`}
+            placeholder={`Ex: Meus Dragões...`}
             className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-purple-500 transition-colors"
           />
         </div>

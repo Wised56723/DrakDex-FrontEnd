@@ -1,18 +1,17 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { X, User, Lock, Mail, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, User, Lock, Mail, ChevronRight, Loader2, AlertCircle, Ghost } from 'lucide-react'; 
 import { toast } from 'sonner';
 
-export default function AuthModal({ onClose }) {
+export default function AuthModal({ onClose }) { 
   const { login, register } = useContext(AuthContext);
   
-  const [isLogin, setIsLogin] = useState(true); // Alternar entre Login e Cadastro
+  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Estados do formulário
   const [formData, setFormData] = useState({
-    nome: '',
+    nomeCompleto: '', 
     vulgo: '',
     email: '',
     senha: ''
@@ -30,35 +29,54 @@ export default function AuthModal({ onClose }) {
 
     try {
       if (isLogin) {
-        // LOGIN
         await login(formData.email, formData.senha);
         toast.success(`Bem-vindo de volta!`);
-        onClose(); // Fecha o modal
+        if (onClose) onClose(); 
       } else {
-        // CADASTRO
+        // Validação extra no Frontend
+        if (formData.senha.length < 8) {
+             setError("A senha deve ter no mínimo 8 caracteres.");
+             setLoading(false);
+             return;
+        }
+
         await register(formData);
         toast.success("Conta criada! Faça login agora.");
-        setIsLogin(true); // Muda para a tela de login
-        setFormData({ ...formData, senha: '' }); // Limpa a senha por segurança
+        setIsLogin(true);
+        // Limpa o form
+        setFormData({ nomeCompleto: '', vulgo: '', email: '', senha: '' });
       }
     } catch (err) {
-      console.error(err);
-      setError("Falha na autenticação. Verifique seus dados.");
+      console.error("Erro no Auth:", err);
+      
+      // LÓGICA DE ERRO MELHORADA
+      const msgBackend = err.response?.data;
+
+      if (typeof msgBackend === 'object') {
+          // Se for JSON (erros de validação do Spring), mostra mensagem genérica ou o primeiro erro
+          setError("Dados inválidos. Verifique os campos.");
+      } else if (typeof msgBackend === 'string') {
+          // Se for Texto (ex: "Email já existe"), mostra o texto
+          setError(msgBackend);
+      } else {
+          setError("Erro de conexão ou servidor.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Classes CSS reutilizáveis
+  const inputClass = "w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-10 text-white focus:border-purple-500 focus:outline-none transition-colors";
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
       <div className="w-full max-w-md bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
         
-        {/* Botão Fechar */}
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
           <X size={24} />
         </button>
 
-        {/* Cabeçalho */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-2">
             {isLogin ? 'Acessar Portal' : 'Novo Caçador'}
@@ -68,7 +86,6 @@ export default function AuthModal({ onClose }) {
           </p>
         </div>
 
-        {/* Erro */}
         {error && (
           <div className="mb-6 bg-red-950/30 border border-red-900/50 p-3 rounded-lg flex items-center gap-3 text-red-400 text-sm">
             <AlertCircle size={18} />
@@ -76,10 +93,8 @@ export default function AuthModal({ onClose }) {
           </div>
         )}
 
-        {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          {/* Campos extras para Cadastro */}
           {!isLogin && (
             <>
               <div className="space-y-1">
@@ -87,35 +102,34 @@ export default function AuthModal({ onClose }) {
                 <div className="relative">
                   <User className="absolute left-3 top-3 text-slate-500" size={18} />
                   <input 
-                    name="nome"
+                    name="nomeCompleto"
                     type="text" 
                     placeholder="Seu nome completo"
                     required
-                    value={formData.nome}
+                    value={formData.nomeCompleto} // Adicionado value
                     onChange={handleChange}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-10 text-white focus:border-purple-500 focus:outline-none transition-colors"
+                    className={inputClass}
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase ml-1">Vulgo (Apelido)</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 text-purple-500" size={18} />
+                  <Ghost className="absolute left-3 top-3 text-purple-500" size={18} />
                   <input 
                     name="vulgo"
                     type="text" 
                     placeholder="Como quer ser chamado?"
                     required
-                    value={formData.vulgo}
+                    value={formData.vulgo} // Adicionado value
                     onChange={handleChange}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-10 text-white focus:border-purple-500 focus:outline-none transition-colors"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </>
           )}
 
-          {/* Email */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase ml-1">Email</label>
             <div className="relative">
@@ -125,14 +139,13 @@ export default function AuthModal({ onClose }) {
                 type="email" 
                 placeholder="seu@email.com"
                 required
-                value={formData.email}
+                value={formData.email} // Adicionado value
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-10 text-white focus:border-purple-500 focus:outline-none transition-colors"
+                className={inputClass}
               />
             </div>
           </div>
 
-          {/* Senha */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase ml-1">Senha</label>
             <div className="relative">
@@ -140,11 +153,11 @@ export default function AuthModal({ onClose }) {
               <input 
                 name="senha"
                 type="password" 
-                placeholder="••••••••"
+                placeholder="Mínimo 8 caracteres"
                 required
-                value={formData.senha}
+                value={formData.senha} // Adicionado value
                 onChange={handleChange}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-10 text-white focus:border-purple-500 focus:outline-none transition-colors"
+                className={inputClass}
               />
             </div>
           </div>
@@ -162,7 +175,6 @@ export default function AuthModal({ onClose }) {
           </button>
         </form>
 
-        {/* Rodapé Alternar */}
         <div className="mt-6 text-center pt-6 border-t border-slate-900">
           <p className="text-slate-400 text-sm">
             {isLogin ? 'Ainda não tem conta?' : 'Já tem uma conta?'}
